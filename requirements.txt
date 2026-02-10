@@ -1,0 +1,12 @@
+supabase==2.3.4
+openai==1.12.0
+python-dotenv==1.0.1
+python-frontmatter==1.1.0
+fastapi==0.109.2
+uvicorn==0.27.1
+pydantic==2.6.1
+httpx==0.26.0
+praw==7.7.1
+beautifulsoup4==4.12.3
+requests==2.31.0
+
