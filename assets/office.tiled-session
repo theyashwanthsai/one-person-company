@@ -1,0 +1,77 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "assets/office.tmx",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "assets/beach.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "assets/beach_items.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "assets/board.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "assets/interior_1.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "assets/office.tmx": {
+            "scale": 2.4422916666666663,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 239.93858227416194,
+                "y": 159.8908129318434
+            }
+        },
+        "assets/stoneface.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "assets/trees.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "assets/water.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "last.imagePath": "/home/theyashwanthsai/Dev/one_person_company/assets/Farm RPG - Tiny Asset Pack - (All in One)/Exterior/Beach",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "openFiles": [
+        "assets/interior_1.tsx",
+        "assets/beach.tsx",
+        "assets/office.tmx",
+        "assets/water.tsx",
+        "assets/stoneface.tsx",
+        "assets/board.tsx",
+        "assets/beach_items.tsx",
+        "assets/trees.tsx"
+    ],
+    "project": "office.tiled-project",
+    "recentFiles": [
+        "assets/interior_1.tsx",
+        "assets/beach.tsx",
+        "assets/trees.tsx",
+        "assets/beach_items.tsx",
+        "assets/board.tsx",
+        "assets/stoneface.tsx",
+        "assets/water.tsx",
+        "assets/office.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
