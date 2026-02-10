@@ -2,6 +2,8 @@
 
 ## Quick Start
 
+**Important:** Migrations must be run in Supabase Dashboard or via psql. The Python script `run_migrations.py` is a helper that shows you how - it cannot execute SQL directly.
+
 ### Fast Setup (Recommended)
 ```bash
 ./setup.sh  # Auto-creates .env, venv, installs dependencies
@@ -11,7 +13,15 @@
 
 **1. Database Setup**
 ```bash
-# In Supabase SQL Editor, paste: migrations/all_migrations.sql
+# In Supabase Dashboard:
+# 1. Go to SQL Editor (left sidebar)
+# 2. Click "New Query"
+# 3. Copy/paste contents of: migrations/all_migrations.sql
+# 4. Click "Run"
+# ✓ All 8 tables created!
+
+# Alternative (if you have psql):
+# psql $DATABASE_URL -f migrations/all_migrations.sql
 ```
 
 **2. Environment**
@@ -68,21 +78,41 @@ python scripts/cold_start.py
 
 **Result:** 24-30 learnings across all agents from curated content.
 
-### Part 2: Website Articles (`ingest_website.py`)
-Crawls saiyashwanth.com/articles recursively.
+### Part 2: Website Articles (`ingest_github_articles.py`)
+Scrapes **63 articles** (42,000+ words) from your GitHub repo.
 
 ```bash
-python scripts/ingest_website.py
+python scripts/ingest_github_articles.py
 ```
 
-**What it does:**
-- Crawls articles page + follows all article links
-- Extracts title + content from each article
-- Stores in `external_signals` table
-- Generates 15-24 additional learnings per agent
-- Max 50 articles (configurable)
+**What it scrapes:**
+- **63 markdown files** across all subdirectories:
+  - `/ai_playbooks/` → CrewAI, DSPy, prompting guides
+  - `/twitter_essays/` → MCP, frameworks, AI agents
+  - `/computers/` → LLM series, backend, deep learning
+  - `/osdevlogs/` → OS development logs
+  - Root articles → AI predictions, personal essays
+- **42,579 total words** of content
+- Stores as **63 signals** in `external_signals` table
+- Generates **24 learnings** (8 per agent)
 
-**Result:** Agents learn from your full body of work, not just samples. All learnings marked `ceo_boosted=true`.
+**Source:** [github.com/theyashwanthsai/DigitalGarden](https://github.com/theyashwanthsai/DigitalGarden/tree/master/public/content)
+
+**Why GitHub API?**
+- ✅ Direct markdown access (no web scraping)
+- ✅ Parses frontmatter automatically
+- ✅ No browser/Selenium needed
+- ✅ 100% reliable
+
+**Expected output:**
+```
+✓ Found 63 markdown files
+✓ Processed 63 articles (42,579 words)
+✓ Stored 63 articles
+✓ Generated 24 learnings
+```
+
+**Result:** Agents understand your writing voice across your entire blog. All learnings marked `ceo_boosted=true`.
 
 ---
 

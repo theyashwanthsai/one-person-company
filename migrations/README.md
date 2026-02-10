@@ -15,17 +15,26 @@ Run these in order in your Supabase SQL Editor.
 
 ## How to Run
 
-### Option 1: Supabase Dashboard
+### Option 1: All-in-One (Recommended)
+**Use `all_migrations.sql` to create all tables at once:**
+
+**Supabase Dashboard:**
 1. Go to your Supabase project
 2. Click "SQL Editor" in the left sidebar
-3. Copy contents of each migration file
-4. Paste and click "Run"
-5. Repeat for all 8 files in order
+3. Click "New Query"
+4. Copy **entire contents** of `all_migrations.sql`
+5. Paste and click "Run"
+6. ✓ All 8 tables created!
 
-### Option 2: Python Script
+**Command Line (if you have psql):**
 ```bash
-python scripts/run_migrations.py
+psql $DATABASE_URL -f migrations/all_migrations.sql
 ```
+
+### Option 2: Individual Files
+Run files 001-008 in order if you prefer granular control.
+
+**Note:** `python scripts/run_migrations.py` won't work - Supabase doesn't support SQL execution via REST API. Use the dashboard or psql.
 
 ## Seed Data
 

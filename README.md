@@ -69,8 +69,8 @@ python scripts/register_agents.py
 # Part 1: Mini essays (curated samples)
 python scripts/cold_start.py
 
-# Part 2: Website articles (full body of work)
-python scripts/ingest_website.py
+# Part 2: Website articles (scraped from GitHub)
+python scripts/ingest_github_articles.py
 
 # Result: 40-60 learnings across all agents
 ```
