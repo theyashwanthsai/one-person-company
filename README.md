@@ -29,22 +29,33 @@ A team of AI agents that:
 
 See `DOCS.md` for detailed setup and API reference.
 
-### 1. Database Setup
+### Option A: Automated Setup
+```bash
+./setup.sh
+# Does steps 2 & 3 automatically
+```
+
+### Option B: Manual Setup
+
+#### 1. Database Setup
 ```bash
 # In Supabase SQL Editor: paste migrations/all_migrations.sql
 ```
 
-### 2. Install Dependencies
+#### 2. Install Dependencies
 ```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment
+#### 3. Configure Environment
 ```bash
 cp env.example .env
-# Add your Supabase and OpenAI credentials
+# Edit .env with your credentials:
+# - SUPABASE_URL
+# - SUPABASE_SERVICE_ROLE_KEY  
+# - OPENAI_API_KEY
 ```
 
 ### 4. Register Agents

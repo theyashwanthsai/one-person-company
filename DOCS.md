@@ -2,23 +2,39 @@
 
 ## Quick Start
 
-### 1. Database Setup
+### Fast Setup (Recommended)
+```bash
+./setup.sh  # Auto-creates .env, venv, installs dependencies
+```
+
+### Manual Setup
+
+**1. Database Setup**
 ```bash
 # In Supabase SQL Editor, paste: migrations/all_migrations.sql
-# Creates 8 tables: agents, learnings, memories, sessions, content_pipeline, external_signals, ceo_feedback, company_trajectory
 ```
 
-### 2. Environment
+**2. Environment**
 ```bash
 cp env.example .env
-# Add: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY
+# Edit .env and add:
+# - SUPABASE_URL (Supabase Dashboard → Settings → API)
+# - SUPABASE_SERVICE_ROLE_KEY
+# - OPENAI_API_KEY (platform.openai.com/api-keys)
 ```
 
-### 3. Bootstrap
+**3. Dependencies**
 ```bash
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+```
+
+**4. Register & Cold Start**
+```bash
 python scripts/register_agents.py     # Register Thea, Kavi, Dara
-python scripts/cold_start.py          # Seed learnings from your writing
+python scripts/cold_start.py          # Mini essays
+python scripts/ingest_website.py      # Website articles
 ```
 
 ---
@@ -173,7 +189,11 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 - Stores articles + generates learnings
 - Max 50 articles (configurable)
 
-**Total:** ~580 lines of clean, functional code.
+**`.gitignore`** - Protects sensitive files (.env, __pycache__, venv, etc.)
+
+**`setup.sh`** - One-command setup script (creates .env, venv, installs deps)
+
+**Total:** ~600 lines of clean, functional code.
 
 **Test the libraries:**
 ```bash
@@ -181,6 +201,19 @@ python scripts/test_core_libs.py
 # Tests learnings, memories, and sessions
 # Verifies database connectivity
 ```
+
+---
+
+## Project Setup
+
+**.gitignore** - Protects sensitive files:
+- `.env` and environment files
+- `__pycache__` and Python artifacts
+- Virtual environments
+- IDE files
+- Logs and temporary files
+
+**Important:** Never commit `.env` file! It contains your API keys.
 
 ---
 
