@@ -19,13 +19,16 @@
 
 ## Seed Data
 
-- [x] Create agent skill folders (strategist_lead, creator_hooks, analyst_lead)
+- [x] Create agent skill folders (strategist_lead, creator_lead, analyst_lead)
 - [x] Create soul.md for each agent with personalities
 - [x] Set agent capabilities in soul.md frontmatter
 - [x] Set initial pixel positions for office map
 - [x] Create agent-specific prompts in agent folders
 - [x] Write agent registration script (register_agents.py)
 - [x] Write lib/agents.py with progressive disclosure loading
+- [x] Create HTML dashboard with pixel art map
+- [x] Add agent sprites to dashboard
+- [x] Style dashboard (dark theme, borders, layout)
 
 ## Cold Start: Ingest Existing Content
 
@@ -90,35 +93,37 @@
 - [x] Handle rate limits via retry logic
 - [ ] Handle token counting (not yet needed)
 
-## Session Type: CEO Daily Standup
+## Session Type: CEO Daily Standup ✅
 
-- [ ] Create `prompts/sessions/ceo_standup.md` template
-- [ ] Write `workers/ceo_standup.py` runner
-- [ ] Implement per-agent standup format (what_changed, confident, uncertain)
-- [ ] Update agent states during standup
-- [ ] Store conversation in session
-- [ ] Extract key points as memories
-- [ ] Test manually with 3 agents
+- [x] Write `workers/ceo_standup.py` runner (email-based)
+- [x] Implement per-agent standup format (what_changed, confident, uncertain)
+- [x] Update agent states during standup
+- [x] Store conversation in session
+- [x] Extract key points as learnings
+- [x] Email integration (lib/email_client.py)
+- [x] CEO feedback commands (boost/dampen/focus)
+- [x] Database functions for learning adjustments
+- [x] Documentation (CEO_STANDUP_SETUP.md)
 
-## Session Type: Brainstorm
+## Session Type: Brainstorm ✅
 
-- [ ] Create `prompts/sessions/brainstorm.md` template
-- [ ] Write `workers/brainstorm.py` runner
-- [ ] Implement turn-by-turn conversation (8-12 turns)
-- [ ] Strategist shares themes, Creator proposes angles
-- [ ] Store ideas in session artifacts
-- [ ] Extract learnings from conversation
-- [ ] Create memories for participants
+- [x] Write `workers/brainstorm.py` runner
+- [x] Implement turn-by-turn conversation (10 turns)
+- [x] Strategist shares themes, Creator proposes angles
+- [x] Store ideas in content_pipeline table
+- [x] Extract learnings from conversation
+- [x] Auto-topic selection based on learnings
+- [x] Create memories for participants
 
-## Session Type: Market Review
+## Session Type: Market Review ✅
 
-- [ ] Create `prompts/sessions/market_review.md` template
-- [ ] Write `workers/market_review.py` runner
-- [ ] Fetch similar content from external_signals
-- [ ] Calculate benchmark metrics
-- [ ] Group decision: approve/kill/reshape
-- [ ] Store decision reasoning as learning
-- [ ] Update content_pipeline status
+- [x] Write `workers/market_review.py` runner
+- [x] Fetch similar content from external_signals
+- [x] Calculate benchmark metrics
+- [x] Group decision: approve/kill/reshape
+- [x] Store decision reasoning as learning
+- [x] Update content_pipeline status
+- [x] Three-way evaluation (Analyst + Strategist + Creator)
 
 ## Session Type: 1-on-1
 
@@ -128,28 +133,32 @@
 - [ ] Store conversation
 - [ ] Extract learnings and memories
 
-## Session Type: Watercooler
+## Session Type: Watercooler ✅
 
-- [ ] Create `prompts/sessions/watercooler.md` template
-- [ ] Write `workers/watercooler.py` runner
-- [ ] Random agent selection (2-3 agents)
-- [ ] Casual conversation (3-5 turns)
-- [ ] No action items allowed
-- [ ] Extract weak signals as learnings
+- [x] Write `workers/watercooler.py` runner
+- [x] Random agent selection (2-3 agents)
+- [x] Casual conversation (3-5 turns)
+- [x] Random casual topics
+- [x] No action items allowed
+- [x] Extract weak signals as learnings
+- [x] High temperature for creativity
 
-## Agent Tools: Function Calling
+## Agent Tools: Function Calling ✅
 
-- [ ] Define `tools/scan_external_source.json` schema
-- [ ] Implement scan_external_source (Twitter, Reddit, HN)
-- [ ] Define `tools/query_learnings.json` schema
-- [ ] Implement query_learnings tool
-- [ ] Define `tools/request_1on1.json` schema
-- [ ] Implement request_1on1 (creates session)
-- [ ] Define `tools/email_ceo.json` schema
-- [ ] Implement email_ceo (sends email)
-- [ ] Define `tools/write_learning.json` schema
-- [ ] Implement write_learning tool
-- [ ] Wire tools into LLM function calling
+- [x] Build `lib/tool_registry.py` — discovers tools, validates schemas, executes
+- [x] Build `lib/tool_runner.py` — LLM ↔ tool execution loop (run_agent_with_tools)
+- [x] Tool convention: each tool = Python file with SCHEMA + execute()
+- [x] Shared tools in `tools/` (all agents), agent-specific in `agents/<id>/tools/`
+- [x] `tools/query_learnings.py` — search team knowledge
+- [x] `tools/write_learning.py` — document patterns/insights
+- [x] `tools/store_memory.py` — record experiential memories
+- [x] `tools/recall_memories.py` — search past experiences
+- [x] `tools/request_1on1.py` — request conversation with another agent
+- [x] `tools/email_ceo.py` — escalate to CEO via email
+- [x] `tools/scan_external_source.py` — search external signals
+- [x] `tools/check_content_pipeline.py` — view content pipeline status
+- [x] `run_agent_step()` — high-level: load soul + tools + run (one function call)
+- [x] Test script: `scripts/test_tools.py`
 
 ## External Signal Ingestion: Twitter
 

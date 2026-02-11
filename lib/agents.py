@@ -90,6 +90,17 @@ def update_agent_location(agent_id: str, location: str, pixel_position: Optional
     supabase.table("agents").update(data).eq("id", agent_id).execute()
 
 
+def update_agent(agent_id: str, state: str = None, current_location: str = None):
+    """Update agent state and/or location in one call."""
+    data = {}
+    if state:
+        data["state"] = state
+    if current_location:
+        data["current_location"] = current_location
+    if data:
+        supabase.table("agents").update(data).eq("id", agent_id).execute()
+
+
 def load_agent_prompt(agent_id: str, prompt_name: str) -> Optional[str]:
     agent_folder = AGENTS_DIR / agent_id
     prompt_file = agent_folder / "prompts" / f"{prompt_name}.md"
