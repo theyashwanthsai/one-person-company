@@ -160,81 +160,77 @@
 - [x] `run_agent_step()` — high-level: load soul + tools + run (one function call)
 - [x] Test script: `scripts/test_tools.py`
 
-## External Signal Ingestion: Twitter
+## Engine Architecture ✅
 
-- [ ] Write `workers/ingest_twitter.py`
-- [ ] Connect to Twitter API (or use scraper)
-- [ ] Fetch trending threads in your niche
-- [ ] Store in external_signals table
-- [ ] Mark as unanalyzed
+- [x] Single file: `workers/engine.py` runs the entire company
+- [x] Flat SCHEDULE list — add/remove entries to change the day
+- [x] Solo tasks: `run_agent_step()` → agent uses tools autonomously
+- [x] Meetings: turn-taking, each turn is `run_agent_step()` with history
+- [x] Natural conclusion detection (agents say [DONE] or wrap-up phrases)
+- [x] CLI: `--run scan`, `--run-all`, `--list` for manual control
+- [x] Deleted all hardcoded worker files (brainstorm, watercooler, etc.)
 
-## External Signal Ingestion: Reddit
+## Daily Schedule (in engine.py)
 
-- [ ] Write `workers/ingest_reddit.py`
-- [ ] Use Reddit API (PRAW)
-- [ ] Fetch top posts from relevant subreddits
-- [ ] Store in external_signals table
+- [x] 08:00 Thea scans signals (solo)
+- [x] 08:30 Dara analyzes signals (solo)
+- [x] 09:00 CEO standup (meeting)
+- [x] 09:30 Thea scans signals (solo)
+- [x] 10:00 Dara reviews pipeline (solo)
+- [x] 10:30 Brainstorm: Thea + Kavi (meeting)
+- [x] 11:00 Kavi drafts content (solo)
+- [x] 11:30 Thea scans signals (solo)
+- [x] 12:00 Watercooler: random 2 (meeting)
+- [x] 13:00 Thea scans signals (solo)
+- [x] 13:30 Dara deep analysis (solo)
+- [x] 14:00 Market review: all 3 (meeting)
+- [x] 15:00 Brainstorm: Thea + Kavi (meeting)
+- [x] 15:30 Kavi drafts content (solo)
+- [x] 16:00 Thea scans signals (solo)
+- [x] 16:30 Watercooler: random 2 (meeting)
+- [x] 17:00 Dara performance review (solo)
+- [x] 17:30 Thea final scan (solo)
 
-## External Signal Ingestion: Hacker News
+## Signal Ingestion, Scanning, Content, Performance
 
-- [ ] Write `workers/ingest_hackernews.py`
-- [ ] Use HN API (Algolia)
-- [ ] Fetch top/best stories
-- [ ] Store in external_signals table
+All handled by agents via tools + engine schedule:
+- [x] Signal ingestion → Thea uses `scan_external_source` tool (6x/day)
+- [x] Signal analysis → Dara uses `scan_external_source` + `write_learning` (3x/day)
+- [x] Content ideation → Brainstorm meetings + `write_learning` (2x/day)
+- [x] Content validation → Market review meetings (1x/day)
+- [x] Content drafting → Kavi uses `check_content_pipeline` + tools (2x/day)
+- [x] Performance analysis → Dara uses tools end-of-day (1x/day)
 
-## Scan Session: Strategist Scans Signals
+## External Integration Tools (COMPLETED)
 
-- [ ] Create `prompts/sessions/strategist_scan.md` template
-- [ ] Write `workers/strategist_scan.py`
-- [ ] Fetch unanalyzed signals
-- [ ] Strategist analyzes and extracts themes/narratives
-- [ ] Store insights as learnings
-- [ ] Mark signals as analyzed
-
-## Content Creation Flow
-
-- [ ] Write `lib/content.py` - create_content_idea function
-- [ ] Transition idea to approved
-- [ ] Transition approved to drafted
-- [ ] Generate draft text via Creator agent
-- [ ] Store draft in content_pipeline
-- [ ] Calculate confidence score for draft
-
-## Content Publishing
-
-- [ ] Write `workers/publish_content.py`
-- [ ] Check confidence threshold (>= 0.7 auto-publish)
-- [ ] Post to Twitter API
-- [ ] Update content_pipeline with posted status
-- [ ] Store posted URL
-
-## Content Performance Analysis
-
-- [ ] Write `workers/analyze_performance.py`
-- [ ] Fetch metrics for posted content (impressions, engagement)
-- [ ] Store metrics in content_pipeline
-- [ ] Compare against benchmarks
-- [ ] Generate learnings (lessons/patterns)
-- [ ] Analyst creates performance summary
+- [x] `tools/ingest_twitter.py` — fetch tweets via Twitter API v2
+- [x] `tools/ingest_reddit.py` — fetch Reddit posts via PRAW
+- [x] `tools/ingest_hackernews.py` — fetch HN stories via Firebase API
+- [x] `tools/publish_content.py` — post tweets (single or threads)
+- [x] `tools/fetch_metrics.py` — pull engagement metrics and analyze performance
+- [x] Store metrics in content_pipeline — automatically done by fetch_metrics
+- [x] Compare against benchmarks — engagement score analysis built-in
+- [x] Generate learnings — agents write learnings using write_learning tool
+- [x] Analyst creates performance summary — scheduled in engine.py
 
 ## Learning Extraction from Sessions
 
-- [ ] Write `lib/extract_learnings.py`
-- [ ] Send session conversation to LLM
-- [ ] Prompt: extract insights, patterns, strategies
-- [ ] Parse structured output (type, statement, confidence)
-- [ ] Dedupe via source_session_id
-- [ ] Insert into learnings table
+- [x] ~~Write `lib/extract_learnings.py`~~ — Not needed: agents write learnings live during sessions via `write_learning` tool
+- [x] ~~Send session conversation to LLM~~ — Agents extract insights in real-time as they converse
+- [x] ~~Prompt: extract insights, patterns, strategies~~ — Built into agent prompts in engine.py
+- [x] ~~Parse structured output~~ — Tools handle structured input/output
+- [x] ~~Dedupe via source_session_id~~ — Learnings track source_agent
+- [x] ~~Insert into learnings table~~ — `tools/write_learning.py` handles this
 
 ## Session Scheduling System
 
-- [ ] Write `scheduler.py` cron manager
-- [ ] Schedule CEO standup daily (morning)
-- [ ] Schedule brainstorm sessions 2x per day
-- [ ] Schedule market review after brainstorms
-- [ ] Schedule watercooler 1x per day (random time)
-- [ ] Schedule strategist scans 3x per day
-- [ ] Schedule performance analysis daily (evening)
+- [x] ~~Write `scheduler.py` cron manager~~ — Replaced by `workers/engine.py` SCHEDULE
+- [x] Schedule CEO standup daily (morning) — 09:00
+- [x] Schedule brainstorm sessions 2x per day — 10:30, 15:00
+- [x] Schedule market review after brainstorms — 14:00
+- [x] Schedule watercooler 1x per day (random time) — 12:00, 16:30 (2x with random agents)
+- [x] Schedule strategist scans 3x per day — 08:00, 09:30, 11:30, 13:00, 16:00, 17:30
+- [x] Schedule performance analysis daily (evening) — 17:00
 - [ ] Add jitter (±30 min randomness)
 
 ## FastAPI: Basic Server

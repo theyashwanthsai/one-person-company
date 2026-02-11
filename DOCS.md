@@ -239,14 +239,142 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 ### ✅ Agent Tool System
 - **Tool Registry** — Auto-discovers tools from `tools/` and `agents/<id>/tools/`
 - **Tool Runner** — LLM ↔ tool execution loop with retries
-- **7 Shared Tools** — query_learnings, write_learning, store_memory, recall_memories, request_1on1, email_ceo, scan_external_source, check_content_pipeline
+- **12 Shared Tools** — learnings, memories, sessions, content pipeline, external integrations
+
+### ✅ External Integration Tools
+- **ingest_twitter.py** — Fetch tweets via Twitter API v2
+- **ingest_reddit.py** — Fetch Reddit posts via PRAW
+- **ingest_hackernews.py** — Fetch HN stories (no auth needed)
+- **publish_content.py** — Post tweets (single or threads)
+- **fetch_metrics.py** — Pull engagement metrics and analyze performance
 
 ### 🚧 Next Up
-- **Content Drafting & Posting** - Agents write and publish
-- **External Scanning** - Twitter/Reddit/HN ingestion
 - **Frontend** - Pixel art office dashboard
+- **Email Client** - Complete CEO standup email flow
+- **Deployment** - Production setup and cron jobs
 
-**Progress:** 80+ items complete in `plan.md` (out of 150+)
+**Progress:** 90+ items complete in `plan.md` (out of 150+)
+
+---
+
+## External Integration Tools
+
+### Twitter (`ingest_twitter.py`)
+```python
+# Fetch tweets by search query
+result = await execute(
+    query="from:elonmusk OR #AI",
+    max_results=50,
+    category="competitor_content"
+)
+# Returns: tweets_ingested, signal_ids, top_tweet
+```
+
+**Features:**
+- Twitter API v2 recent search
+- Stores tweets as external_signals
+- Includes engagement metrics (likes, retweets, replies)
+- Author info and timestamp
+
+### Reddit (`ingest_reddit.py`)
+```python
+# Fetch hot posts from subreddit
+result = await execute(
+    subreddit="MachineLearning",
+    sort="hot",  # or "new", "top", "rising"
+    limit=25,
+    time_filter="day"  # for "top" sort
+)
+# Returns: posts_ingested, signal_ids, top_post
+```
+
+**Features:**
+- PRAW (Python Reddit API Wrapper)
+- Sort by hot/new/top/rising
+- Engagement scores (upvotes × ratio + comments)
+- Filters out stickied posts
+
+### Hacker News (`ingest_hackernews.py`)
+```python
+# Fetch top HN stories
+result = await execute(
+    story_type="top",  # or "new", "best", "ask", "show"
+    limit=20
+)
+# Returns: stories_ingested, signal_ids, top_story
+```
+
+**Features:**
+- Firebase API (no auth required)
+- Includes score and comment count
+- Handles both links and text posts
+
+### Publishing (`publish_content.py`)
+```python
+# Post a single tweet
+result = await execute(text="Hello world! 🚀")
+
+# Post a thread (separate with \n---\n)
+result = await execute(
+    text="Tweet 1\n---\nTweet 2\n---\nTweet 3",
+    draft_id="optional-pipeline-id"
+)
+# Returns: tweets_posted, is_thread, tweets[], primary_url
+```
+
+**Features:**
+- OAuth 1.0a authentication
+- Thread support (automatic replies)
+- Updates content_pipeline if draft_id provided
+- Returns URLs for all posted tweets
+
+### Metrics (`fetch_metrics.py`)
+```python
+# Get engagement metrics
+result = await execute(
+    tweet_id="1234567890",
+    update_pipeline=True
+)
+# Returns: metrics, performance, analysis
+```
+
+**Features:**
+- Likes, retweets, replies, impressions
+- Engagement rate calculation
+- Performance classification (low/average/good/excellent)
+- Viral potential and discussion quality analysis
+- Auto-updates content_pipeline
+
+### Testing External Tools
+
+Run the test suite:
+```bash
+python3 scripts/test_external_tools.py
+```
+
+This will:
+1. Check your API credentials
+2. Test each ingestion tool
+3. Optionally test publishing (confirmation required)
+4. Optionally test metrics fetching
+
+### API Setup
+
+**Twitter API:**
+1. Go to https://developer.twitter.com/en/portal/dashboard
+2. Create a project and app
+3. Set permissions to "Read and Write"
+4. Generate API Key & Secret, Bearer Token, Access Token & Secret
+5. Add to `.env`
+
+**Reddit API:**
+1. Go to https://www.reddit.com/prefs/apps
+2. Create an app (script type)
+3. Get client ID (under app name) and secret
+4. Add to `.env`
+
+**Hacker News:**
+- No API key needed! Works out of the box.
 
 ---
 
@@ -264,16 +392,26 @@ Tools live in two places:
 
 ### Available Tools
 
-| Tool | Description |
-|------|-------------|
-| `query_learnings` | Search team knowledge base |
-| `write_learning` | Document a pattern/insight/strategy |
-| `store_memory` | Record an experiential memory |
-| `recall_memories` | Search past experiences and interactions |
-| `request_1on1` | Request conversation with another agent |
-| `email_ceo` | Send email to CEO (escalations, questions) |
-| `scan_external_source` | Search external signals (Twitter, Reddit, HN) |
-| `check_content_pipeline` | View content pipeline status |
+**Knowledge & Memory:**
+- `query_learnings` — Search team knowledge base
+- `write_learning` — Document a pattern/insight/strategy
+- `store_memory` — Record an experiential memory
+- `recall_memories` — Search past experiences and interactions
+
+**Communication:**
+- `request_1on1` — Request conversation with another agent
+- `email_ceo` — Send email to CEO (escalations, questions)
+
+**External Ingestion:**
+- `ingest_twitter` — Fetch tweets from accounts or search terms
+- `ingest_reddit` — Fetch posts from subreddits
+- `ingest_hackernews` — Fetch top/new/best HN stories
+- `scan_external_source` — Search stored external signals
+
+**Content & Publishing:**
+- `check_content_pipeline` — View content pipeline status
+- `publish_content` — Post tweets (supports threads)
+- `fetch_metrics` — Get engagement metrics for published content
 
 ### Running an Agent with Tools
 
@@ -324,43 +462,81 @@ python3 scripts/test_tools.py
 
 ---
 
-## Sessions System
+## Engine — `workers/engine.py`
 
-### How Sessions Work
+The entire company runs from one file. One schedule. Each entry prompts an agent with a task, and the agent uses their tools to do the actual work.
 
-All sessions follow the same pattern:
-1. **Create session** → record in `sessions` table
-2. **Agent interactions** → LLM-generated conversation turns
-3. **Store learnings** → `learnings` table (what was discovered)
-4. **Store memories** → `memories` table (what happened, emotional context)
-5. **Complete session** → artifacts stored, states reset
+### How It Works
 
-Every session writes to **both** learnings and memories. Learnings are factual insights; memories are experiential records of what happened.
+**Solo tasks:** Engine tells agent what to do → `run_agent_step()` → agent uses tools autonomously
 
-### Session Types
+**Meetings:** Engine orchestrates turn-taking → each turn is `run_agent_step()` with conversation history → agents use tools during conversation → natural conclusion detection
 
-| Type | Participants | Schedule | Purpose |
-|------|-------------|----------|---------|
-| CEO Standup | You + 3 leads | Daily 9 AM | Email-based async sync |
-| Brainstorm | Strategist + Creator | 2x/day | Creative ideation |
-| Market Review | All 3 leads | 1x/day | Validate content ideas |
-| Watercooler | Random 2-3 | 2x/day | Weak signal discovery |
+### Running
 
-### CEO Standup (Email-Based)
+```bash
+# Start the engine (runs on schedule)
+python3 workers/engine.py
 
-**Flow:** Reminder email → Agent updates → CEO receives summary → CEO replies with feedback
+# Run a specific task right now
+python3 workers/engine.py --run brainstorm
+python3 workers/engine.py --run scan
 
-**Agent Updates:**
-- What changed since last time
-- What they're confident about
-- What they're uncertain about
+# Run ALL tasks sequentially (full day)
+python3 workers/engine.py --run-all
 
-**CEO Commands (reply to email):**
-- `boost [agent_id]` → increase learning confidence
-- `dampen [agent_id]` → decrease confidence
-- `focus on [topic]` → set strategic direction for all agents
+# See the schedule
+python3 workers/engine.py --list
+```
 
-**Email Setup (Gmail):**
+### Daily Schedule
+
+```
+08:00  Thea scans signals (solo)
+08:30  Dara analyzes signals (solo)
+09:00  CEO standup (meeting: all 3)
+09:30  Thea scans signals (solo)
+10:00  Dara reviews pipeline (solo)
+10:30  Brainstorm (meeting: Thea + Kavi)
+11:00  Kavi drafts content (solo)
+11:30  Thea scans signals (solo)
+12:00  Watercooler (meeting: random 2)
+13:00  Thea scans signals (solo)
+13:30  Dara deep analysis (solo)
+14:00  Market review (meeting: all 3)
+15:00  Brainstorm (meeting: Thea + Kavi)
+15:30  Kavi drafts content (solo)
+16:00  Thea scans signals (solo)
+16:30  Watercooler (meeting: random 2)
+17:00  Dara performance review (solo)
+17:30  Thea final scan (solo)
+```
+
+### Adding a New Task
+
+Add one entry to the `SCHEDULE` list in `engine.py`:
+
+```python
+{
+    "time": "18:00", "type": "solo",
+    "agent": "creator_lead",
+    "session_type": "review",
+    "task": "Review all drafts from today. Polish the best one."
+}
+```
+
+That's it. The agent uses their tools to figure out how.
+
+### Content Pipeline
+
+Ideas flow through: `idea → approved → drafted → posted → analyzed`
+
+```sql
+SELECT title, status, priority FROM content_pipeline ORDER BY created_at DESC;
+```
+
+### Email Setup (for CEO standup)
+
 1. Enable 2-Step Verification at https://myaccount.google.com/security
 2. Create App Password at https://myaccount.google.com/apppasswords
 3. Add to `.env`:
@@ -371,61 +547,6 @@ IMAP_HOST=imap.gmail.com
 EMAIL_ADDRESS=your-bot-email@gmail.com
 EMAIL_PASSWORD=your-16-char-app-password
 CEO_EMAIL=your-personal-email@gmail.com
-```
-
-### Brainstorm Session
-
-- Strategist opens with themes/insights from learnings
-- 10-turn creative dialogue
-- Extracts 2-5 content ideas → `content_pipeline` table
-- Each agent stores learnings AND memories from the conversation
-
-### Market Review Session
-
-- Picks top unreviewed idea from `content_pipeline`
-- Analyst scans `external_signals` for similar content
-- Three-way evaluation (Analyst + Strategist + Creator)
-- Group decision: **approve / reshape / kill**
-- Updates `content_pipeline` status
-
-### Watercooler Session
-
-- Random 2-3 agents, random casual topic
-- Short (3-5 turns), high creativity (temp 0.9)
-- Extracts weak signals (low confidence, high potential)
-- Agents store memories of the conversation
-
-### Running Sessions
-
-```bash
-# Test individual sessions
-python3 workers/brainstorm.py
-python3 workers/market_review.py
-python3 workers/watercooler.py
-python3 workers/ceo_standup.py
-
-# Run automated scheduler (all sessions on schedule)
-python3 workers/scheduler.py
-```
-
-### Daily Schedule
-
-```
-09:00 → CEO Standup (you get email)
-10:30 → Brainstorm (ideas generated)
-12:00 → Watercooler (casual chat)
-14:00 → Market Review (validate top idea)
-15:00 → Brainstorm (more ideas)
-16:30 → Watercooler (weak signals)
-```
-
-### Content Pipeline
-
-Ideas flow through: `idea → approved → drafted → posted → analyzed`
-
-```sql
--- Check pipeline
-SELECT title, status, priority FROM content_pipeline ORDER BY created_at DESC;
 ```
 
 ---

@@ -85,21 +85,32 @@ python workers/ceo_standup.py
 
 ```
 one_person_company/
-├── migrations/          # Database schema
-├── seeds/              # Initial data
+├── migrations/          # Database schema (8 tables)
 ├── lib/                # Core libraries
 │   ├── agents.py       # Agent management
 │   ├── learnings.py    # Learning system
 │   ├── memories.py     # Memory system
 │   ├── sessions.py     # Session engine
-│   └── llm.py          # OpenAI wrapper
-├── workers/            # Background workers
-│   ├── ceo_standup.py
-│   ├── brainstorm.py
-│   └── strategist_scan.py
-├── prompts/            # LLM prompts (markdown)
-├── api/                # FastAPI server
-├── frontend/           # Next.js dashboard
+│   ├── llm.py          # OpenAI wrapper
+│   ├── tool_registry.py # Tool discovery
+│   └── tool_runner.py  # LLM function calling loop
+├── tools/              # Agent tools (12 shared tools)
+│   ├── query_learnings.py
+│   ├── write_learning.py
+│   ├── store_memory.py
+│   ├── recall_memories.py
+│   ├── ingest_twitter.py
+│   ├── ingest_reddit.py
+│   ├── ingest_hackernews.py
+│   ├── publish_content.py
+│   ├── fetch_metrics.py
+│   └── ...
+├── workers/            # Orchestration
+│   └── engine.py       # Central scheduler (all sessions + tasks)
+├── agents/             # Agent folders (soul.md + prompts + tools)
+│   ├── strategist_lead/
+│   ├── creator_lead/
+│   └── analyst_lead/
 └── scripts/            # Utility scripts
 ```
 
@@ -113,8 +124,11 @@ Current status:
 - [x] Agent skill system (Thea, Kavi, Dara)
 - [x] Cold start system (mini essays + website scraper)
 - [x] Core libraries (llm, learnings, sessions, memories)
-- [ ] Session engine (CEO standup, brainstorm, etc.)
-- [ ] Content creation flow
+- [x] Session engine (CEO standup, brainstorm, watercooler, 1-on-1)
+- [x] Agent tool system (12 tools: learnings, memories, external APIs)
+- [x] External integrations (Twitter, Reddit, HN ingestion + publishing)
+- [x] Content creation flow (pipeline: idea → draft → publish → analyze)
+- [x] Centralized engine (workers/engine.py with daily schedule)
 - [ ] Frontend dashboard
 - [ ] Deployment
 
