@@ -29,7 +29,7 @@ SCHEMA = {
                 "max_results": {
                     "type": "integer",
                     "description": "Number of tweets to fetch (max 100).",
-                    "default": 20,
+                    "default": 100,
                     "minimum": 10,
                     "maximum": 100,
                 },
@@ -76,7 +76,7 @@ async def execute(
     agent_id: Optional[str] = None,
     query: Optional[str] = None,
     keywords: Optional[List[str]] = None,
-    max_results: int = 20,
+    max_results: int = 100,
 ) -> dict:
     del agent_id
 
