@@ -10,10 +10,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-supabase = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-)
+supabase = None
+
+
+def _get_supabase():
+    global supabase
+    if supabase is not None:
+        return supabase
+
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not url or not key:
+        raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+
+    supabase = create_client(url, key)
+    return supabase
 
 SCHEMA = {
     "type": "function",
@@ -64,12 +75,13 @@ def _build_payload(entry: Mapping[str, object], source: str, category: str, now:
 
 
 def _execute_insert(signals: Iterable[Mapping[str, object]], source: str, category: str) -> List[int]:
+    client = _get_supabase()
     now = datetime.utcnow().isoformat()
     stored_ids: List[int] = []
 
     for entry in signals:
         payload = _build_payload(entry, source, category, now)
-        result = supabase.table("external_signals").insert(payload).execute()
+        result = client.table("external_signals").insert(payload).execute()
         if result.data and isinstance(result.data, list):
             stored_ids.append(result.data[0]["id"])
     return stored_ids

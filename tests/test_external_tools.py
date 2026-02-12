@@ -15,12 +15,13 @@ from datetime import datetime
 
 from utils import print_header, setup_test_environment
 
+# Load .env before importing tools that initialize clients at import time.
+setup_test_environment()
+
 from tools.store_external_signal import execute as store_external_signal
 from tools.surf_hn import execute as surf_hn
 from tools.surf_reddit import execute as surf_reddit
 from tools.publish_content import execute as publish_content
-
-setup_test_environment()
 
 SUPABASE_READY = bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 RUN_PUBLISH_TEST = os.getenv("RUN_TWITTER_PUBLISH_TEST") == "1"
