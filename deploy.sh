@@ -4,6 +4,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="opc-backend"
 NGINX_SITE="opc-frontend"
+WEB_ROOT="/var/www/opc"
 APP_USER="${SUDO_USER:-$USER}"
 APP_GROUP="$(id -gn "$APP_USER")"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
@@ -53,6 +54,19 @@ if ! command -v nginx >/dev/null 2>&1; then
   sudo apt-get install -y nginx
 fi
 
+echo "==> Syncing frontend files to ${WEB_ROOT}"
+sudo mkdir -p "${WEB_ROOT}"
+sudo cp "${PROJECT_DIR}/dashboard.html" "${WEB_ROOT}/"
+if [[ -f "${PROJECT_DIR}/dashboard.config.js" ]]; then
+  sudo cp "${PROJECT_DIR}/dashboard.config.js" "${WEB_ROOT}/"
+fi
+if [[ -d "${PROJECT_DIR}/assets" ]]; then
+  sudo rsync -a --delete "${PROJECT_DIR}/assets/" "${WEB_ROOT}/assets/"
+fi
+sudo chown -R www-data:www-data "${WEB_ROOT}"
+sudo find "${WEB_ROOT}" -type d -exec chmod 755 {} \;
+sudo find "${WEB_ROOT}" -type f -exec chmod 644 {} \;
+
 sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
 
 sudo tee "/etc/nginx/sites-available/${NGINX_SITE}" > /dev/null <<EOF
@@ -61,7 +75,7 @@ server {
     listen [::]:80 default_server;
     server_name _;
 
-    root ${PROJECT_DIR};
+    root ${WEB_ROOT};
     index dashboard.html;
 
     location / {
