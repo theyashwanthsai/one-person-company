@@ -15,36 +15,44 @@
             background: #0a0a0a;
             color: #fff;
             font-family: 'Courier New', monospace;
-            display: flex;
-            align-items: center;
-            min-height: 100vh;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 300px;
+            align-items: start;
+            gap: 20px;
+            min-height: 100svh;
             padding: 20px;
-            padding-right: 320px;
             margin: 0;
         }
 
         #office-container {
             position: relative;
-            display: inline-block;
+            width: 100%;
+            max-width: 1200px;
             border: 10px solid #fff;
             border-radius: 0;
             overflow: hidden;
-            margin-left: 20px;
+            margin: 0 auto;
+        }
+
+        #office-stage {
+            position: relative;
+            width: 100%;
         }
 
         #office-map {
             display: block;
-            width: 1200px;
+            width: 100%;
             height: auto;
         }
 
         .agent {
             position: absolute;
-            width: 68px;
-            height: 68px;
+            width: clamp(36px, 5.5vw, 68px);
+            height: clamp(36px, 5.5vw, 68px);
             cursor: pointer;
             transition: transform 0.2s;
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+            transform: translate(-50%, -50%);
         }
 
         .agent img {
@@ -55,7 +63,7 @@
         }
 
         .agent:hover {
-            transform: scale(1.2);
+            transform: translate(-50%, -50%) scale(1.15);
             z-index: 100;
         }
 
@@ -84,11 +92,10 @@
         }
 
         #sidebar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 300px;
-            height: 100vh;
+            position: sticky;
+            top: 20px;
+            width: 100%;
+            height: calc(100svh - 40px);
             background: #0a0a0a;
             padding: 30px 20px;
             border-left: 1px solid #333;
@@ -166,13 +173,38 @@
             font-size: 11px;
             color: #000;
         }
+
+        @media (max-width: 900px) {
+            body {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                padding: 12px;
+            }
+
+            #office-container {
+                border-width: 6px;
+            }
+
+            #sidebar {
+                position: static;
+                height: auto;
+                border-left: 0;
+                border-top: 1px solid #333;
+                padding: 20px 12px;
+            }
+
+            h1 {
+                margin-bottom: 14px;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="office-container">
-        <img id="office-map" src="assets/custom_made/map.png" alt="Office Map">
-        
-        <!-- Agents will be added here dynamically -->
+        <div id="office-stage">
+            <img id="office-map" src="assets/custom_made/map.png" alt="Office Map">
+            <!-- Agents will be added here dynamically -->
+        </div>
     </div>
 
     <div id="sidebar">
@@ -306,7 +338,8 @@
             label.textContent = agent.name;
             agentDiv.appendChild(label);
 
-            agentDiv.addEventListener("click", () => {
+            agentDiv.addEventListener("click", (event) => {
+                event.stopPropagation();
                 if (positionMode) {
                     selectedAgent = id;
                     console.log(`Selected ${agent.name} for positioning`);
@@ -317,11 +350,11 @@
         }
 
         function renderAgents() {
-            const container = document.getElementById("office-container");
-            container.querySelectorAll(".agent").forEach((el) => el.remove());
+            const stage = document.getElementById("office-stage");
+            stage.querySelectorAll(".agent").forEach((el) => el.remove());
 
             for (const [id, agent] of Object.entries(agents)) {
-                container.appendChild(createAgentElement(id, agent));
+                stage.appendChild(createAgentElement(id, agent));
             }
 
             updateSidebar();
@@ -373,7 +406,7 @@
             document.getElementById("position-output").innerHTML = output;
         }
 
-        document.getElementById("office-container").addEventListener("click", (e) => {
+        document.getElementById("office-stage").addEventListener("click", (e) => {
             if (!positionMode || !selectedAgent) return;
 
             const rect = e.currentTarget.getBoundingClientRect();
