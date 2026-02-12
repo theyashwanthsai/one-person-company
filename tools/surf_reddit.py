@@ -1,5 +1,5 @@
 """Tool: Surf Reddit
-Fetch Reddit posts via the public JSON endpoints and return structured content for agents to inspect."""
+Fetch Reddit posts via old.reddit.com JSON endpoints and return structured content."""
 
 import logging
 import time
@@ -15,66 +15,58 @@ SCHEMA = {
     "type": "function",
     "function": {
         "name": "surf_reddit",
-        "description": "Surf Reddit by calling /r/<subreddit>/<sort>.json and return posts for agents to evaluate before saving.",
+        "description": "Surf Reddit by calling old.reddit.com /r/<subreddit>/<sort>.json and return posts for agents to evaluate before saving.",
         "parameters": {
             "type": "object",
             "properties": {
                 "subreddits": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of subreddit names (without r/)."
+                    "description": "List of subreddit names (without r/).",
                 },
                 "subreddit": {
                     "type": "string",
-                    "description": "Single subreddit name (fall-back)."
+                    "description": "Single subreddit name (fall-back).",
                 },
                 "sort": {
                     "type": "string",
                     "enum": ["hot", "new", "top", "rising"],
                     "description": "Listing sort order",
-                    "default": "new"
+                    "default": "new",
                 },
                 "limit_per_subreddit": {
                     "type": "integer",
                     "description": "Max posts to fetch per subreddit (max 50)",
                     "default": 25,
                     "minimum": 1,
-                    "maximum": 50
+                    "maximum": 50,
                 },
                 "time_filter": {
                     "type": "string",
                     "enum": ["hour", "day", "week", "month", "year", "all"],
                     "description": "Time filter (applies to top sort).",
-                    "default": "day"
+                    "default": "day",
                 },
                 "min_score": {
                     "type": "integer",
                     "description": "Minimum score required for a post.",
-                    "default": 0
+                    "default": 0,
                 },
                 "max_age_hours": {
                     "type": "integer",
                     "description": "Only include posts younger than this many hours.",
-                    "minimum": 1
-                }
-            }
-        }
-    }
+                    "minimum": 1,
+                },
+            },
+        },
+    },
 }
 
-USER_AGENT = "one-person-company/1.0 (+https://theyashwanthsai.com)"
 REQUEST_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "User-Agent": "one-person-company/1.0 (+https://theyashwanthsai.com)",
+    "Accept": "application/json",
     "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "DNT": "1",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
+    "Referer": "https://old.reddit.com/",
 }
 
 
@@ -86,6 +78,7 @@ def _normalize_subreddits(subreddits: Optional[Iterable[str]], subreddit: Option
         names.append(subreddit.strip())
     if not names:
         names = ["programming"]
+
     seen = set()
     clean: List[str] = []
     for name in names:
@@ -98,7 +91,7 @@ def _normalize_subreddits(subreddits: Optional[Iterable[str]], subreddit: Option
 
 
 def _build_url(subreddit: str, sort: str) -> str:
-    return f"https://www.reddit.com/r/{subreddit}/{sort}.json"
+    return f"https://old.reddit.com/r/{subreddit}/{sort}.json"
 
 
 def _post_matches_filters(post: dict, min_score: int, cutoff_ts: Optional[int]) -> bool:
@@ -118,7 +111,7 @@ async def _fetch_subreddit_posts(
     limit: int,
     time_filter: str,
     min_score: int,
-    cutoff_ts: Optional[int]
+    cutoff_ts: Optional[int],
 ) -> List[dict]:
     url = _build_url(subreddit, sort)
     params = {"limit": limit}
@@ -138,6 +131,7 @@ async def _fetch_subreddit_posts(
         if not _post_matches_filters(post, min_score, cutoff_ts):
             continue
         filtered.append(post)
+
     logger.info("Fetched %s posts from r/%s", len(filtered), subreddit)
     return filtered
 
@@ -145,7 +139,7 @@ async def _fetch_subreddit_posts(
 def _normalize_post(post: dict) -> dict:
     title = post.get("title") or "Untitled"
     created_at = datetime.fromtimestamp(post.get("created_utc", 0)).isoformat()
-    url = post.get("url") or f"https://reddit.com{post.get('permalink')}"
+    url = post.get("url") or f"https://old.reddit.com{post.get('permalink')}"
 
     return {
         "title": title,
@@ -162,8 +156,8 @@ def _normalize_post(post: dict) -> dict:
             "created_utc": post.get("created_utc"),
             "permalink": post.get("permalink"),
             "flair": post.get("link_flair_text"),
-            "domain": post.get("domain")
-        }
+            "domain": post.get("domain"),
+        },
     }
 
 
@@ -176,8 +170,6 @@ async def execute(
     min_score: int = 0,
     max_age_hours: Optional[int] = None,
 ) -> dict:
-    """Surf Reddit and return posts without saving them."""
-
     names = _normalize_subreddits(subreddits, subreddit)
     cutoff_ts = None
     range_label = "latest"
@@ -185,14 +177,11 @@ async def execute(
         cutoff_ts = int(time.time()) - max_age_hours * 3600
         range_label = f"last {max_age_hours}h"
 
-    try:
-        headers = dict(REQUEST_HEADERS)
-        if not headers.get("User-Agent"):
-            headers["User-Agent"] = USER_AGENT
+    aggregated: List[dict] = []
+    skipped: List[dict] = []
 
-        async with httpx.AsyncClient(headers=headers, timeout=30.0) as client:
-            aggregated: List[dict] = []
-            skipped: List[dict] = []
+    try:
+        async with httpx.AsyncClient(headers=REQUEST_HEADERS, timeout=30.0) as client:
             for name in names:
                 try:
                     posts = await _fetch_subreddit_posts(
@@ -202,32 +191,21 @@ async def execute(
                         limit_per_subreddit,
                         time_filter,
                         min_score,
-                        cutoff_ts
+                        cutoff_ts,
                     )
-                    normalized = [_normalize_post(post) for post in posts]
-                    aggregated.extend(normalized)
+                    aggregated.extend([_normalize_post(post) for post in posts])
                 except httpx.HTTPStatusError as exc:
                     status = exc.response.status_code
-                    skipped.append(
-                        {"subreddit": name, "status": status, "reason": f"HTTP {status}"}
-                    )
+                    skipped.append({"subreddit": name, "status": status, "reason": f"HTTP {status}"})
                     logger.warning("Skipping r/%s due to HTTP %s", name, status)
                 except Exception as exc:
-                    skipped.append(
-                        {"subreddit": name, "status": None, "reason": str(exc)}
-                    )
+                    skipped.append({"subreddit": name, "status": None, "reason": str(exc)})
                     logger.warning("Skipping r/%s due to error: %s", name, exc)
-    except httpx.HTTPStatusError as exc:
-        return {"success": False, "error": f"Reddit API error: {exc.response.status_code}"}
     except Exception as exc:
         return {"success": False, "error": f"Failed to surf Reddit: {exc}"}
 
     if not aggregated and skipped:
-        return {
-            "success": False,
-            "error": "All subreddit requests failed",
-            "skipped": skipped
-        }
+        return {"success": False, "error": "All subreddit requests failed", "skipped": skipped}
 
     top_post = max(aggregated, key=lambda item: item["score"]) if aggregated else None
 
@@ -239,5 +217,5 @@ async def execute(
         "posts": aggregated,
         "top_post": top_post,
         "count": len(aggregated),
-        "skipped": skipped
+        "skipped": skipped,
     }
