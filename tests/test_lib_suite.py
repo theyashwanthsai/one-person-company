@@ -315,8 +315,10 @@ class TestToolRunner(unittest.TestCase):
         self.assertEqual(calls[0]["tool"], "ping")
 
     def test_run_agent_step_builds_context(self):
-        with patch("lib.agents.load_agent_full", return_value={"soul_instructions": "sys"}), patch(
-            "lib.tool_runner.run_agent_with_tools",
+        agents_module = fresh_import("lib.agents")
+        with patch.object(agents_module, "load_agent_full", return_value={"soul_instructions": "sys"}), patch.object(
+            self.module,
+            "run_agent_with_tools",
             new=AsyncMock(return_value=("ok", [])),
         ) as run_agent:
             import asyncio
@@ -370,7 +372,8 @@ class TestLibInit(unittest.TestCase):
     def test_lazy_exports(self):
         module = fresh_import("lib")
         self.assertIn("chat_completion", module.__all__)
-        with patch("lib.llm.chat_completion", return_value="ok"):
+        llm_module = fresh_import("lib.llm")
+        with patch.object(llm_module, "chat_completion", return_value="ok"):
             fn = module.chat_completion
             self.assertTrue(callable(fn))
 
