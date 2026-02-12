@@ -101,10 +101,8 @@ one_person_company/
 │   ├── write_learning.py
 │   ├── store_memory.py
 │   ├── recall_memories.py
-│   ├── surf_twitter.py
 │   ├── surf_reddit.py
 │   ├── surf_hn.py
-│   ├── surf_twitter.py
 │   ├── store_external_signal.py
 │   ├── publish_content.py
 │   ├── fetch_metrics.py

@@ -241,7 +241,6 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 - **Tool Runner** — LLM ↔ tool execution loop with retries
 - **12 Shared Tools** — learnings, memories, sessions, content pipeline, external integrations
 
-- **surf_twitter.py** — Surf tweets via Twitter API v2
 - **surf_reddit.py** — Surf Reddit posts via public JSON endpoints
 - **surf_hn.py** — Fetch HN stories via Algolia with time-window filters
 - **store_external_signal.py** — Persist surf_* payloads to Supabase
@@ -258,20 +257,6 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 ---
 
 ## External Integration Tools
-
-### Twitter (`surf_twitter.py`)
-```python
-result = await execute(
-    query="from:elonmusk OR #AI",
-    max_results=50
-)
-# Returns: count, tweets, top_tweet
-```
-
-**Features:**
-- Twitter API v2 recent search
-- Returns per-tweet metrics and raw JSON
-- Pair with `store_external_signal` when you want to persist select tweets
 
 ### Reddit (`surf_reddit.py`)
 ```python
@@ -415,7 +400,6 @@ Tools live in two places:
 - `email_ceo` — Send email to CEO (escalations, questions)
 
 **External Ingestion:**
-- `surf_twitter` — Fetch tweets from accounts or search terms
 - `surf_reddit` — Surf Reddit posts via public JSON endpoints
 - `surf_hn` — Surf Hacker News stories via Algolia time-window search
 - `store_external_signal` — Persist selected signals after surf_ tools run

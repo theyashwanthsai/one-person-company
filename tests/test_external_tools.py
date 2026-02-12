@@ -4,18 +4,12 @@ Run this to verify your API credentials are working.
 
 import asyncio
 import os
-import sys
-from pathlib import Path
-# Add repo root so shared modules can be imported even when the script lives in tests/
-REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
 
-from utils import print_header, setup_test_environment
+from tests.utils import print_header, setup_test_environment
 
 from tools.store_external_signal import execute as store_external_signal
 from tools.surf_hn import execute as surf_hn
 from tools.surf_reddit import execute as surf_reddit
-from tools.surf_twitter import execute as surf_twitter
 
 setup_test_environment()
 
@@ -31,30 +25,14 @@ async def _maybe_store(signals, source: str, category: str):
 
 
 async def test_twitter():
-    """Test Twitter ingestion"""
-    print_header("🐦 Testing Twitter ingestion")
-    surf = surf_twitter
-
-    result = await surf(query="AI OR machine learning", max_results=5)
-
-    if not result.get("success"):
-        print(f"❌ Error: {result.get('error')}")
-        return
-
-    tweets = result.get("tweets", [])
-    print(f"✅ Surfed {result.get('count', 0)} tweets for query '{result.get('query')}'")
-    top = result.get("top_tweet")
-    if top:
-        print(f"   Top tweet: {top.get('text', '')[:100]}")
-    await _maybe_store(tweets, source="twitter", category="test_scan")
+    """Twitter surf is disabled until we re-enable the tool."""
+    print_header("🐦 Twitter surf is currently suspended (skipped)")
 
 
 async def test_reddit():
-    """Test Reddit ingestion"""
+    """Test Reddit ingestion."
     print_header("🔴 Testing Reddit ingestion")
-    surf = surf_reddit
-
-    result = await surf(
+    result = await surf_reddit(
         subreddits=["ArcRaiders", "MachineLearning"],
         sort="new",
         limit_per_subreddit=5,
@@ -76,11 +54,9 @@ async def test_reddit():
 
 
 async def test_hackernews():
-    """Test Hacker News ingestion"""
+    """Test Hacker News ingestion."""
     print_header("🟠 Testing Hacker News ingestion")
-    surf = surf_hn
-
-    result = await surf(hours_window=6, min_points=20, max_posts=30)
+    result = await surf_hn(hours_window=6, min_points=20, max_posts=30)
 
     if not result.get("success"):
         print(f"❌ Error: {result.get('error')}")

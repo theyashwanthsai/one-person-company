@@ -45,14 +45,14 @@ def execute(agent_id: str, **kwargs):
 
     subject = f"{emoji} [{agent_id}] {kwargs['subject']}"
     body = f"""From: {agent_id}
-Urgency: {urgency}
+        Urgency: {urgency}
 
-{kwargs['message']}
+        {kwargs['message']}
 
----
-This email was sent by your AI agent {agent_id}.
-Reply to provide feedback or direction.
-"""
+        ---
+        This email was sent by your AI agent {agent_id}.
+        Reply to provide feedback or direction.
+        """
 
     success = client._send_email(client.ceo_email, subject, body)
 

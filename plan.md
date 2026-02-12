@@ -203,7 +203,6 @@ All handled by agents via tools + engine schedule:
 
 ## External Integration Tools (COMPLETED)
 
-- [x] `tools/surf_twitter.py` — fetch tweets via Twitter API v2
 - [x] `tools/store_external_signal.py` — persist surf_* payloads to external_signals
 - [x] `tools/surf_reddit.py` — fetch Reddit posts via public JSON endpoints
 - [x] `tools/surf_hn.py` — fetch HN stories via Algolia time-window API
