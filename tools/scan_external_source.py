@@ -3,7 +3,7 @@ Tool: scan_external_source
 Search external signals (Twitter, Reddit, HN content) stored in the database.
 
 Note: This searches STORED signals. To fetch NEW content, use:
-- surf_reddit (fetch fresh Reddit posts)  
+- surf_twitter (fetch fresh Twitter posts by keyword)
 - surf_hn (fetch fresh Hacker News stories)
 """
 

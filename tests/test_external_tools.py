@@ -20,7 +20,7 @@ setup_test_environment()
 
 from tools.store_external_signal import execute as store_external_signal
 from tools.surf_hn import execute as surf_hn
-from tools.surf_reddit import execute as surf_reddit
+from tools.surf_twitter import execute as surf_twitter
 from tools.publish_content import execute as publish_content
 
 SUPABASE_READY = bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
@@ -40,32 +40,29 @@ async def _maybe_store(signals, source: str, category: str):
 
 
 async def test_twitter():
-    """Twitter surf is disabled until the surf_twitter tool returns."""
-    print_header("🐦 Twitter surf is currently suspended (skipped)")
-
-
-async def test_reddit():
-    """Test Reddit ingestion."""
-    print_header("🔴 Testing Reddit ingestion")
-    result = await surf_reddit(
-        subreddits=["ArcRaiders", "MachineLearning"],
-        sort="new",
-        limit_per_subreddit=5,
-        min_score=0,
-        max_age_hours=24,
+    """Test Twitter ingestion by keywords."""
+    print_header("🐦 Testing Twitter ingestion")
+    result = await surf_twitter(
+        keywords=["ai agents", "open source"],
+        max_results=15,
     )
 
     if not result.get("success"):
         print(f"❌ Error: {result.get('error')}")
         return
 
-    posts = result.get("posts", [])
-    print(f"✅ Surfed {result.get('count', 0)} Reddit posts from {', '.join(result.get('subreddits', []))} in {result.get('range')}")
-    top_post = result.get("top_post")
-    if top_post:
-        print(f"   Top post: {top_post.get('title')}")
-        print(f"   Score: {top_post.get('score')}")
-    await _maybe_store(posts, source="reddit", category="test_scan")
+    tweets = result.get("tweets", [])
+    print(f"✅ Surfed {result.get('count', 0)} tweets")
+    top = result.get("top_tweet")
+    if top:
+        print(f"   Top tweet: {top.get('text', '')[:80]}...")
+        print(f"   Likes: {top.get('metrics', {}).get('likes', 0)}")
+    await _maybe_store(tweets, source="twitter", category="test_scan")
+
+
+async def test_reddit():
+    """Reddit ingestion disabled by design."""
+    print_header("🔴 Reddit ingestion disabled (skipped)")
 
 
 async def test_hackernews():
