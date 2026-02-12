@@ -27,7 +27,7 @@ SCHEMA = {
                     "type": "array",
                     "items": {
                         "type": "object",
-                        "description": "Structured signal payload (title, content, url, author, metrics, raw_data, created_at)."
+        "description": "Structured signal payload (title, content, url, author, metrics, raw_data, ingested_at)."
                     },
                     "description": "List of signals to persist."
                 },
@@ -58,7 +58,6 @@ def _build_payload(entry: Mapping[str, object], source: str, category: str, now:
         "metrics": entry.get("metrics") or {},
         "raw_data": entry.get("raw_data") or {},
         "tags": entry.get("tags") or [],
-        "created_at": entry.get("created_at"),
         "ingested_at": entry.get("ingested_at") or now
     }
     return payload

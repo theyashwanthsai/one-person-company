@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import frontmatter
 from supabase import create_client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 supabase = create_client(
     os.getenv("SUPABASE_URL"),

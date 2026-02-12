@@ -9,6 +9,10 @@ Note: This searches STORED signals. To fetch NEW content, use:
 """
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 SCHEMA = {
     "type": "function",
@@ -56,7 +60,7 @@ def execute(agent_id: str, **kwargs):
     if tags:
         query = query.overlaps('tags', tags)
 
-    query = query.order('created_at', desc=True).limit(limit)
+    query = query.order('ingested_at', desc=True).limit(limit)
     result = query.execute()
 
     if not result.data:
