@@ -58,29 +58,51 @@ SCHEMA = {
 }
 
 
-def _build_payload(entry: Mapping[str, object], source: str, category: str, now: str):
+def _normalize_tags(value: object) -> List[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if item is not None]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _build_source_id(entry: Mapping[str, object]) -> str:
+    raw_data = entry.get("raw_data")
+    if isinstance(raw_data, Mapping):
+        candidate = raw_data.get("id") or raw_data.get("objectID")
+        if candidate is not None:
+            return str(candidate)
+    candidate = entry.get("id")
+    return str(candidate) if candidate is not None else ""
+
+
+def _build_payload(entry: Mapping[str, object], source: str, now: str):
+    content = entry.get("content") or entry.get("text") or entry.get("title") or ""
     payload = {
         "source": source,
-        "category": category,
-        "title": entry.get("title") or entry.get("text") or "",
-        "content": entry.get("content") or entry.get("text") or "",
+        "source_id": _build_source_id(entry),
+        "content": content,
         "url": entry.get("url") or entry.get("link") or "",
         "author": entry.get("author") or entry.get("handle") or "",
-        "metrics": entry.get("metrics") or {},
-        "raw_data": entry.get("raw_data") or {},
-        "tags": entry.get("tags") or [],
+        "metrics": entry.get("metrics") or {
+            "score": entry.get("score", 0),
+            "comments": entry.get("comments", 0),
+            "engagement_score": entry.get("engagement_score", 0),
+            "created_at": entry.get("created_at")
+        },
+        "tags": _normalize_tags(entry.get("tags")),
         "ingested_at": entry.get("ingested_at") or now
     }
     return payload
 
 
-def _execute_insert(signals: Iterable[Mapping[str, object]], source: str, category: str) -> List[int]:
+def _execute_insert(signals: Iterable[Mapping[str, object]], source: str, category: str) -> List[str]:
     client = _get_supabase()
     now = datetime.utcnow().isoformat()
-    stored_ids: List[int] = []
+    stored_ids: List[str] = []
 
     for entry in signals:
-        payload = _build_payload(entry, source, category, now)
+        payload = _build_payload(entry, source, now)
         result = client.table("external_signals").insert(payload).execute()
         if result.data and isinstance(result.data, list):
             stored_ids.append(result.data[0]["id"])

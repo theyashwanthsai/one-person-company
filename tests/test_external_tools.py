@@ -32,7 +32,11 @@ async def _maybe_store(signals, source: str, category: str):
         return
 
     payload = signals[:3]
-    await store_external_signal(signals=payload, source=source, category=category)
+    result = await store_external_signal(signals=payload, source=source, category=category)
+    if result.get("success"):
+        print(f"   ✅ Stored {result.get('signals_stored', 0)} signals in Supabase")
+    else:
+        print(f"   ❌ Store failed: {result.get('error')}")
 
 
 async def test_twitter():
