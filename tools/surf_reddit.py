@@ -175,22 +175,42 @@ async def execute(
     try:
         async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, timeout=30.0) as client:
             aggregated: List[dict] = []
+            skipped: List[dict] = []
             for name in names:
-                posts = await _fetch_subreddit_posts(
-                    client,
-                    name,
-                    sort,
-                    limit_per_subreddit,
-                    time_filter,
-                    min_score,
-                    cutoff_ts
-                )
-                normalized = [_normalize_post(post) for post in posts]
-                aggregated.extend(normalized)
+                try:
+                    posts = await _fetch_subreddit_posts(
+                        client,
+                        name,
+                        sort,
+                        limit_per_subreddit,
+                        time_filter,
+                        min_score,
+                        cutoff_ts
+                    )
+                    normalized = [_normalize_post(post) for post in posts]
+                    aggregated.extend(normalized)
+                except httpx.HTTPStatusError as exc:
+                    status = exc.response.status_code
+                    skipped.append(
+                        {"subreddit": name, "status": status, "reason": f"HTTP {status}"}
+                    )
+                    logger.warning("Skipping r/%s due to HTTP %s", name, status)
+                except Exception as exc:
+                    skipped.append(
+                        {"subreddit": name, "status": None, "reason": str(exc)}
+                    )
+                    logger.warning("Skipping r/%s due to error: %s", name, exc)
     except httpx.HTTPStatusError as exc:
         return {"success": False, "error": f"Reddit API error: {exc.response.status_code}"}
     except Exception as exc:
         return {"success": False, "error": f"Failed to surf Reddit: {exc}"}
+
+    if not aggregated and skipped:
+        return {
+            "success": False,
+            "error": "All subreddit requests failed",
+            "skipped": skipped
+        }
 
     top_post = max(aggregated, key=lambda item: item["score"]) if aggregated else None
 
@@ -201,5 +221,6 @@ async def execute(
         "range": range_label,
         "posts": aggregated,
         "top_post": top_post,
-        "count": len(aggregated)
+        "count": len(aggregated),
+        "skipped": skipped
     }
