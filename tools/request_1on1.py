@@ -29,7 +29,7 @@ SCHEMA = {
 
 async def execute(agent_id: str, **kwargs):
     """Request a 1-on-1 session."""
-    from workers.one_on_one import run_one_on_one
+    from lib.sessions import create_session, append_turn, complete_session
 
     target = kwargs['target_agent']
     reason = kwargs['reason']
@@ -37,18 +37,25 @@ async def execute(agent_id: str, **kwargs):
     if target == agent_id:
         return "You can't request a 1-on-1 with yourself."
 
-    result = await run_one_on_one(
+    session_id = create_session(
+        type="one_on_one",
+        participants=[agent_id, target],
         initiator=agent_id,
-        target=target,
-        reason=reason
+        intent=reason[:200]
     )
 
-    if result:
-        takeaways = result.get('takeaways', [])
-        summary = f"1-on-1 with {target} completed."
-        if takeaways:
-            summary += " Takeaways:\n" + "\n".join([f"- {t['takeaway']}" for t in takeaways])
-        return summary
-    else:
+    if not session_id:
         return f"Failed to start 1-on-1 with {target}."
 
+    append_turn(
+        session_id,
+        speaker=agent_id,
+        text=f"Requested 1-on-1 with {target}. Reason: {reason}"
+    )
+    complete_session(session_id, artifacts={
+        "requested_by": agent_id,
+        "target_agent": target,
+        "reason": reason,
+        "status": "requested"
+    })
+    return f"1-on-1 session request logged with {target}. session_id={session_id}"

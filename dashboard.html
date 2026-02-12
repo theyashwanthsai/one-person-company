@@ -184,105 +184,161 @@
 
     <div id="controls">
         <strong>Position Mode:</strong><br>
-        <button onclick="togglePositionMode()">Toggle Edit Mode</button>
+        <button onclick="togglePositionMode(event)">Toggle Edit Mode</button>
         <button onclick="showPositions()">Show Positions</button>
         <div id="position-output"></div>
     </div>
 
+    <script src="dashboard.config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Agent data - adjust x/y positions here (percentages of map size)
-        let agents = {
+        // Set these in a small script tag before this file in production if needed.
+        const SUPABASE_URL = window.SUPABASE_URL || "";
+        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "";
+        const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+            : null;
+
+        const AGENT_BASE = {
             strategist_lead: {
                 name: "Thea",
                 role: "Strategist",
                 color: "#4ECDC4",
-                image: "assets/custom_made/1.png",
-                x: 30,  // % from left
-                y: 16,  // % from top
-                state: "idle",
-                task: null
+                image: "assets/custom_made/1.png"
             },
             creator_lead: {
                 name: "Kavi",
                 role: "Creator",
                 color: "#4ECDC4",
-                image: "assets/custom_made/6.png",
-                x: 50.5,
-                y: 16,
-                state: "idle",
-                task: null
+                image: "assets/custom_made/6.png"
             },
             analyst_lead: {
                 name: "Dara",
                 role: "Analyst",
                 color: "#95E1D3",
-                image: "assets/custom_made/10.png",
-                x: 40.5,
-                y: 16,
-                state: "idle",
-                task: null
+                image: "assets/custom_made/10.png"
             }
         };
+
+        // Map DB current_location -> coordinates (% of map size).
+        // Watercooler has its own zone, all other meetings use meeting_room.
+        const LOCATION_POSITIONS = {
+            desk: {
+                strategist_lead: { x: 30, y: 16 },
+                creator_lead: { x: 50.5, y: 16 },
+                analyst_lead: { x: 40.5, y: 16 }
+            },
+            lounge: {
+                strategist_lead: { x: 79, y: 6 },
+                creator_lead: { x: 84.5, y: 6 },
+                analyst_lead: { x: 90, y: 2 }
+            },
+            meeting_room: {
+                strategist_lead: { x: 65, y: 75 },
+                creator_lead: { x: 75, y: 75 },
+                analyst_lead: { x: 70, y: 85 }
+            },
+            watercooler_zone: {
+                strategist_lead: { x: 17, y: 59 },
+                creator_lead: { x: 10, y: 55 },
+                analyst_lead: { x: 18, y: 70 }
+            },
+            one_on_one_room: {
+                strategist_lead: { x: 30, y: 16 },
+                creator_lead: { x: 50.5, y: 16 },
+                analyst_lead: { x: 40.5, y: 16 }
+            }
+        };
+
+        let agents = Object.fromEntries(
+            Object.entries(AGENT_BASE).map(([id, base]) => {
+                const initialPos = LOCATION_POSITIONS.meeting_room[id] || { x: 40, y: 40 };
+                return [
+                    id,
+                    {
+                        ...base,
+                        x: initialPos.x,
+                        y: initialPos.y,
+                        state: "meeting",
+                        current_location: "meeting_room",
+                        task: null
+                    }
+                ];
+            })
+        );
 
         let positionMode = false;
         let selectedAgent = null;
 
+        function inferLocationFromState(state) {
+            if (!state) return null;
+            const normalized = state.toLowerCase();
+            if (normalized.startsWith("in_watercooler")) return "watercooler_zone";
+            if (normalized.startsWith("in_one_on_one")) return "one_on_one_room";
+            if (normalized.startsWith("in_")) return "meeting_room";
+            if (normalized.startsWith("working_")) return "desk";
+            if (normalized === "idle") return "lounge";
+            return null;
+        }
+
+        function resolveAgentPosition(agentId, dbAgent) {
+            const locationFromState = inferLocationFromState(dbAgent.state);
+            const location = dbAgent.current_location || locationFromState || "lounge";
+            const locationMap = LOCATION_POSITIONS[location] || LOCATION_POSITIONS.lounge;
+            return locationMap[agentId] || LOCATION_POSITIONS.lounge[agentId] || { x: 40, y: 40 };
+        }
+
         function createAgentElement(id, agent) {
-            const agentDiv = document.createElement('div');
-            agentDiv.className = `agent ${agent.state}`;
+            const agentDiv = document.createElement("div");
+            const isWorking = typeof agent.state === "string" && agent.state.startsWith("working_");
+            agentDiv.className = `agent ${agent.state}${isWorking ? " working" : ""}`;
             agentDiv.id = `agent-${id}`;
             agentDiv.style.left = `${agent.x}%`;
             agentDiv.style.top = `${agent.y}%`;
-            
-            // Add agent image
-            const img = document.createElement('img');
+
+            const img = document.createElement("img");
             img.src = agent.image;
             img.alt = agent.name;
             agentDiv.appendChild(img);
-            
-            const label = document.createElement('div');
-            label.className = 'agent-label';
+
+            const label = document.createElement("div");
+            label.className = "agent-label";
             label.textContent = agent.name;
             agentDiv.appendChild(label);
-            
-            // Click handler for position mode
-            agentDiv.addEventListener('click', (e) => {
+
+            agentDiv.addEventListener("click", () => {
                 if (positionMode) {
                     selectedAgent = id;
                     console.log(`Selected ${agent.name} for positioning`);
                 }
             });
-            
+
             return agentDiv;
         }
 
         function renderAgents() {
-            const container = document.getElementById('office-container');
-            
-            // Remove old agents
-            container.querySelectorAll('.agent').forEach(el => el.remove());
-            
-            // Add agents
+            const container = document.getElementById("office-container");
+            container.querySelectorAll(".agent").forEach((el) => el.remove());
+
             for (const [id, agent] of Object.entries(agents)) {
                 container.appendChild(createAgentElement(id, agent));
             }
-            
-            // Update sidebar
+
             updateSidebar();
         }
 
         function updateSidebar() {
-            const list = document.getElementById('agents-list');
-            list.innerHTML = '';
-            
-            for (const [id, agent] of Object.entries(agents)) {
-                const card = document.createElement('div');
-                card.className = 'agent-info';
+            const list = document.getElementById("agents-list");
+            list.innerHTML = "";
+
+            for (const agent of Object.values(agents)) {
+                const card = document.createElement("div");
+                card.className = "agent-info";
                 card.style.borderColor = agent.color;
-                
+
                 const statusClass = `status-${agent.state}`;
                 const statusText = agent.state.charAt(0).toUpperCase() + agent.state.slice(1);
-                
+
                 card.innerHTML = `
                     <div class="agent-name">
                         ${agent.name}
@@ -290,77 +346,89 @@
                     </div>
                     <div class="agent-status">
                         <span class="status-badge ${statusClass}">${statusText}</span>
-                        ${agent.task || 'Free'}
+                        ${agent.task || "Free"}
+                        <div style="margin-top: 6px; font-size: 11px; opacity: 0.8;">📍 ${agent.current_location || "unknown"}</div>
                     </div>
                 `;
-                
+
                 list.appendChild(card);
             }
         }
 
-        function togglePositionMode() {
+        function togglePositionMode(event) {
             positionMode = !positionMode;
             const btn = event.target;
-            btn.textContent = positionMode ? '✅ Edit Mode ON' : 'Toggle Edit Mode';
-            btn.style.background = positionMode ? '#f39c12' : '#4ECDC4';
-            
-            document.getElementById('position-output').innerHTML = 
-                positionMode ? 'Click map to move selected agent. Click agent first to select.' : '';
+            btn.textContent = positionMode ? "✅ Edit Mode ON" : "Toggle Edit Mode";
+            btn.style.background = positionMode ? "#f39c12" : "#4ECDC4";
+
+            document.getElementById("position-output").innerHTML =
+                positionMode ? "Click map to move selected agent. Click agent first to select." : "";
         }
 
         function showPositions() {
-            let output = '<strong>Current Positions:</strong><br>';
-            for (const [id, agent] of Object.entries(agents)) {
+            let output = "<strong>Current Positions:</strong><br>";
+            for (const agent of Object.values(agents)) {
                 output += `${agent.name}: x: ${agent.x}%, y: ${agent.y}%<br>`;
             }
-            document.getElementById('position-output').innerHTML = output;
+            document.getElementById("position-output").innerHTML = output;
         }
 
-        // Click on map to position agent
-        document.getElementById('office-container').addEventListener('click', (e) => {
+        document.getElementById("office-container").addEventListener("click", (e) => {
             if (!positionMode || !selectedAgent) return;
-            
+
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
             const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-            
+
             agents[selectedAgent].x = parseFloat(x);
             agents[selectedAgent].y = parseFloat(y);
-            
+
             renderAgents();
-            
             console.log(`Moved ${agents[selectedAgent].name} to x: ${x}%, y: ${y}%`);
             showPositions();
         });
 
-        // Fetch agents from API (optional - falls back to mock data)
         async function fetchAgents() {
+            if (!supabaseClient) {
+                console.log("Supabase client not configured. Using local fallback state.");
+                return;
+            }
+
             try {
-                const response = await fetch('/api/agents');
-                if (response.ok) {
-                    const data = await response.json();
-                    // Merge with existing positions
-                    for (const [id, agent] of Object.entries(data)) {
-                        if (agents[id]) {
-                            agents[id] = { ...agents[id], ...agent };
-                        }
-                    }
-                    renderAgents();
+                const { data, error } = await supabaseClient
+                    .from("agents")
+                    .select("id,state,current_location,pixel_position");
+
+                if (error) {
+                    console.error("Failed to fetch agents from Supabase:", error.message);
+                    return;
                 }
+
+                for (const dbAgent of data || []) {
+                    const id = dbAgent.id;
+                    if (!agents[id]) continue;
+
+                    const pos = resolveAgentPosition(id, dbAgent);
+                    agents[id] = {
+                        ...agents[id],
+                        ...dbAgent,
+                        x: pos.x,
+                        y: pos.y,
+                        current_location: dbAgent.current_location || agents[id].current_location
+                    };
+                }
+                renderAgents();
             } catch (error) {
-                console.log('Using mock data');
+                console.log("Using local fallback state (Supabase unavailable)");
             }
         }
 
-        // Initialize
         renderAgents();
-        
-        // Auto-refresh every 5 seconds (optional)
-        // setInterval(fetchAgents, 5000);
-        
-        console.log('🏝️ Dashboard loaded!');
-        console.log('To adjust positions: click "Toggle Edit Mode", click an agent, then click where you want to move them');
+        fetchAgents();
+        setInterval(fetchAgents, 5000);
+
+        console.log("Dashboard loaded");
+        console.log("Position from DB current_location -> map coordinates is active");
     </script>
 </body>
 </html>
-

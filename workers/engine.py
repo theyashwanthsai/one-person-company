@@ -17,6 +17,7 @@ import random
 import asyncio
 import schedule
 import time
+import threading
 from datetime import datetime
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
@@ -180,6 +181,170 @@ SCHEDULE = [
 ]
 
 
+INBOX_QUEUE: Dict[str, List[dict]] = {}
+INBOX_QUEUE_LOCK = threading.Lock()
+AGENT_BUSY: Dict[str, bool] = {}
+AGENT_BUSY_LOCK = threading.Lock()
+DEFAULT_EMAIL_POLL_SECONDS = 60
+
+
+def get_email_poll_seconds() -> int:
+    """Read inbox polling interval from env with sane fallback."""
+    raw = os.getenv("EMAIL_POLL_SECONDS", str(DEFAULT_EMAIL_POLL_SECONDS))
+    try:
+        value = int(raw)
+        return max(15, value)
+    except ValueError:
+        return DEFAULT_EMAIL_POLL_SECONDS
+
+
+def set_agent_busy(agent_id: str, is_busy: bool):
+    with AGENT_BUSY_LOCK:
+        AGENT_BUSY[agent_id] = is_busy
+
+
+def get_agent_busy(agent_id: str) -> bool:
+    with AGENT_BUSY_LOCK:
+        return AGENT_BUSY.get(agent_id, False)
+
+
+async def wait_until_agents_idle(agent_ids: List[str], wait_seconds: int = 2):
+    while True:
+        with AGENT_BUSY_LOCK:
+            any_busy = any(AGENT_BUSY.get(agent_id, False) for agent_id in agent_ids)
+        if not any_busy:
+            return
+        await asyncio.sleep(wait_seconds)
+
+
+def queue_inbox_message(agent_id: str, message: dict):
+    with INBOX_QUEUE_LOCK:
+        existing = INBOX_QUEUE.get(agent_id, [])
+        INBOX_QUEUE[agent_id] = existing + [message]
+
+
+def pop_next_inbox_message(agent_id: str) -> Optional[dict]:
+    with INBOX_QUEUE_LOCK:
+        existing = INBOX_QUEUE.get(agent_id, [])
+        if not existing:
+            return None
+        message = existing[0]
+        INBOX_QUEUE[agent_id] = existing[1:]
+        return message
+
+
+def build_inbox_request_task(agent_id: str, message: dict) -> str:
+    sender = message.get("from", "unknown")
+    subject = message.get("subject", "(no subject)")
+    body = (message.get("body", "") or "").strip()
+    return (
+        "You received a direct email request from the CEO. "
+        "Handle it now, then send your response via email_ceo.\n\n"
+        f"Agent: {agent_id}\n"
+        f"From: {sender}\n"
+        f"Subject: {subject}\n"
+        f"Message:\n{body}\n"
+    )
+
+
+def send_busy_ack(client, agent_id: str, message: dict):
+    to_email = message.get("from") or client.ceo_email
+    subject = message.get("subject", "(no subject)")
+    body = (
+        f"{agent_id} is currently busy on an active session.\n"
+        "Your request has been queued and will be handled after the current work finishes."
+    )
+    client._send_email(to_email, f"Re: {subject}", body)
+
+
+def trigger_inbox_request_if_idle(agent_id: str):
+    if get_agent_busy(agent_id):
+        return
+
+    message = pop_next_inbox_message(agent_id)
+    if not message:
+        return
+
+    def _run():
+        task = build_inbox_request_task(agent_id, message)
+        asyncio.run(run_solo(agent_id, task, "inbox_request"))
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+
+
+def poll_inbox_for_all_agents():
+    """
+    Poll unread email for all agents and queue messages for their next run.
+    This runs in a background thread every minute.
+    """
+    try:
+        from lib.email_client import EmailClient
+        client = EmailClient()
+    except Exception:
+        return
+
+    try:
+        all_agents = get_all_agents()
+    except Exception:
+        return
+
+    for agent in all_agents:
+        agent_id = agent.get("id")
+        if not agent_id:
+            continue
+        messages = client.get_pending_messages_for_agent(agent_id=agent_id, limit=5)
+        if not messages:
+            continue
+        for message in messages:
+            queue_inbox_message(agent_id, message)
+            if get_agent_busy(agent_id):
+                send_busy_ack(client, agent_id, message)
+        trigger_inbox_request_if_idle(agent_id)
+
+
+def start_inbox_poller():
+    """Start daemon thread that polls inbox every minute."""
+    def _loop():
+        poll_seconds = get_email_poll_seconds()
+        while True:
+            poll_inbox_for_all_agents()
+            time.sleep(poll_seconds)
+
+    thread = threading.Thread(target=_loop, daemon=True)
+    thread.start()
+
+
+def get_inbox_context(agent_id: str) -> str:
+    """
+    Consume queued inbox messages for this agent and convert them into
+    a prompt context block.
+    """
+    with INBOX_QUEUE_LOCK:
+        queued = INBOX_QUEUE.get(agent_id, [])
+        messages = queued[:3]
+        INBOX_QUEUE[agent_id] = queued[3:]
+    if not messages:
+        return ""
+
+    lines = [
+        "Inbox directives from CEO (process these before continuing your task):"
+    ]
+    for idx, message in enumerate(messages, start=1):
+        subject = message.get("subject", "").strip() or "(no subject)"
+        sender = message.get("from", "unknown")
+        body = message.get("body", "").strip()
+        short_body = body[:500] + ("..." if len(body) > 500 else "")
+        lines.append(f"{idx}. From: {sender}")
+        lines.append(f"   Subject: {subject}")
+        lines.append(f"   Message: {short_body}")
+    lines.append(
+        "Acknowledge and act on these as needed. "
+        "If another agent should handle this, request a 1-on-1 and notify the CEO."
+    )
+    return "\n".join(lines)
+
+
 # ============================================================
 # SOLO TASK — One agent, one prompt, tools handle the rest
 # ============================================================
@@ -194,44 +359,50 @@ async def run_solo(agent_id: str, task: str, session_type: str):
     print(f"\n{'='*60}")
     print(f"[{now}] SOLO: {agent_id} → {session_type}")
     print(f"{'='*60}")
-    
-    # Update state
-    update_agent(agent_id, state=f'working_{session_type}', current_location='desk')
-    
-    # Create session
-    session_id = create_session(
-        type=session_type,
-        participants=[agent_id],
-        initiator='engine',
-        intent=task[:200]
-    )
-    
-    # Run the agent — they decide what tools to use
-    full_task = f"Current time: {now}\n\n{task}"
-    
-    response, tool_calls = await run_agent_step(
-        agent_id=agent_id,
-        task=full_task,
-        model="gpt-4o"
-    )
-    
-    # Store what happened
-    append_turn(session_id, speaker=agent_id, text=response)
-    
-    print(f"  Response: {response[:150]}...")
-    print(f"  Tools used: {len(tool_calls)}")
-    for tc in tool_calls:
-        print(f"    🔧 {tc['tool']}")
-    
-    # Complete
-    complete_session(session_id, artifacts={
-        'type': session_type,
-        'response': response,
-        'tool_calls': tool_calls
-    })
-    
-    update_agent(agent_id, state='idle', current_location='lounge')
-    print(f"  ✅ Done\n")
+    set_agent_busy(agent_id, True)
+    try:
+        # Solo work happens at the desk.
+        update_agent(agent_id, state=f'working_{session_type}', current_location='desk')
+        
+        # Create session
+        session_id = create_session(
+            type=session_type,
+            participants=[agent_id],
+            initiator='engine',
+            intent=task[:200]
+        )
+        
+        # Run the agent — they decide what tools to use
+        inbox_context = get_inbox_context(agent_id)
+        full_task = f"Current time: {now}\n\n{task}"
+        if inbox_context:
+            full_task = f"{full_task}\n\n{inbox_context}"
+        
+        response, tool_calls = await run_agent_step(
+            agent_id=agent_id,
+            task=full_task,
+            model="gpt-4o"
+        )
+        
+        # Store what happened
+        append_turn(session_id, speaker=agent_id, text=response)
+        
+        print(f"  Response: {response[:150]}...")
+        print(f"  Tools used: {len(tool_calls)}")
+        for tc in tool_calls:
+            print(f"    🔧 {tc['tool']}")
+        
+        # Complete
+        complete_session(session_id, artifacts={
+            'type': session_type,
+            'response': response,
+            'tool_calls': tool_calls
+        })
+    finally:
+        update_agent(agent_id, state='idle', current_location='lounge')
+        set_agent_busy(agent_id, False)
+        print(f"  ✅ Done\n")
+        trigger_inbox_request_if_idle(agent_id)
 
 
 # ============================================================
@@ -255,85 +426,100 @@ async def run_meeting(
     print(f"\n{'='*60}")
     print(f"[{now}] MEETING: {session_type} — {', '.join(agents)}")
     print(f"{'='*60}")
-    
-    # Update states
     for agent_id in agents:
-        update_agent(agent_id, state=f'in_{session_type}', current_location='meeting_room')
-    
-    # Create session
-    session_id = create_session(
-        type=session_type,
-        participants=agents,
-        initiator='engine',
-        intent=task[:200]
-    )
-    
-    conversation = []  # List of {"speaker": ..., "message": ...}
-    all_tool_calls = []
-    
-    for turn in range(max_turns):
-        # Pick speaker: rotate through agents
-        speaker = agents[turn % len(agents)]
-        agent_data = load_agent_full(speaker)
-        soul = agent_data.get('soul_instructions', f'You are {speaker}.')
-        
-        # Build the conversation context
-        if turn == 0:
-            user_msg = f"Current time: {now}\nMeeting type: {session_type}\nParticipants: {', '.join(agents)}\n\n{task}"
+        set_agent_busy(agent_id, True)
+    try:
+        # Special meeting zones.
+        if session_type == "watercooler":
+            meeting_location = "watercooler_zone"
+        elif session_type == "one_on_one":
+            meeting_location = "one_on_one_room"
         else:
-            history = "\n\n".join([
-                f"**{c['speaker']}**: {c['message']}"
-                for c in conversation
-            ])
-            user_msg = f"Current time: {now}\nMeeting type: {session_type}\nParticipants: {', '.join(agents)}\n\nMeeting topic:\n{task}\n\nConversation so far:\n{history}\n\nIt's your turn. Respond naturally. When the conversation has reached a natural conclusion, end your message with [DONE]."
+            meeting_location = "meeting_room"
+
+        # Update states
+        for agent_id in agents:
+            update_agent(agent_id, state=f'in_{session_type}', current_location=meeting_location)
         
-        # Run this agent's turn with their tools
-        response, tool_calls = await run_agent_with_tools(
-            agent_id=speaker,
-            system_prompt=soul,
-            user_prompt=user_msg,
-            model="gpt-4o"
+        # Create session
+        session_id = create_session(
+            type=session_type,
+            participants=agents,
+            initiator='engine',
+            intent=task[:200]
         )
         
-        # Track
-        conversation.append({"speaker": speaker, "message": response})
-        all_tool_calls.extend(tool_calls)
-        append_turn(session_id, speaker=speaker, text=response, turn=turn)
+        conversation = []  # List of {"speaker": ..., "message": ...}
+        all_tool_calls = []
         
-        print(f"  [{turn+1}] {speaker}: {response[:100]}...")
-        for tc in tool_calls:
-            print(f"       🔧 {tc['tool']}")
-        
-        # Check for natural conclusion
-        if "[DONE]" in response or "[done]" in response:
-            print(f"  → Natural conclusion at turn {turn+1}")
-            break
-        
-        # Min turns: at least 2 per agent before we allow ending
-        if turn >= len(agents) * 2:
-            # Check if response sounds conclusive (simple heuristic)
-            conclusive_phrases = [
-                "let's wrap", "that covers it", "good session",
-                "i think we're good", "let's move on", "we've covered",
-                "sounds like a plan", "agreed on all points"
-            ]
-            if any(phrase in response.lower() for phrase in conclusive_phrases):
-                print(f"  → Detected natural wrap-up at turn {turn+1}")
+        for turn in range(max_turns):
+            # Pick speaker: rotate through agents
+            speaker = agents[turn % len(agents)]
+            agent_data = load_agent_full(speaker)
+            soul = agent_data.get('soul_instructions', f'You are {speaker}.')
+            inbox_context = get_inbox_context(speaker)
+            
+            # Build the conversation context
+            if turn == 0:
+                user_msg = f"Current time: {now}\nMeeting type: {session_type}\nParticipants: {', '.join(agents)}\n\n{task}"
+            else:
+                history = "\n\n".join([
+                    f"**{c['speaker']}**: {c['message']}"
+                    for c in conversation
+                ])
+                user_msg = f"Current time: {now}\nMeeting type: {session_type}\nParticipants: {', '.join(agents)}\n\nMeeting topic:\n{task}\n\nConversation so far:\n{history}\n\nIt's your turn. Respond naturally. When the conversation has reached a natural conclusion, end your message with [DONE]."
+            if inbox_context:
+                user_msg = f"{user_msg}\n\n{inbox_context}"
+            
+            # Run this agent's turn with their tools
+            response, tool_calls = await run_agent_with_tools(
+                agent_id=speaker,
+                system_prompt=soul,
+                user_prompt=user_msg,
+                model="gpt-4o"
+            )
+            
+            # Track
+            conversation.append({"speaker": speaker, "message": response})
+            all_tool_calls.extend(tool_calls)
+            append_turn(session_id, speaker=speaker, text=response, turn=turn)
+            
+            print(f"  [{turn+1}] {speaker}: {response[:100]}...")
+            for tc in tool_calls:
+                print(f"       🔧 {tc['tool']}")
+            
+            # Check for natural conclusion
+            if "[DONE]" in response or "[done]" in response:
+                print(f"  → Natural conclusion at turn {turn+1}")
                 break
-    
-    # Complete
-    complete_session(session_id, artifacts={
-        'type': session_type,
-        'turns': len(conversation),
-        'tool_calls_total': len(all_tool_calls),
-        'participants': agents
-    })
-    
-    # Reset states
-    for agent_id in agents:
-        update_agent(agent_id, state='idle', current_location='lounge')
-    
-    print(f"  ✅ Meeting done — {len(conversation)} turns, {len(all_tool_calls)} tool calls\n")
+            
+            # Min turns: at least 2 per agent before we allow ending
+            if turn >= len(agents) * 2:
+                # Check if response sounds conclusive (simple heuristic)
+                conclusive_phrases = [
+                    "let's wrap", "that covers it", "good session",
+                    "i think we're good", "let's move on", "we've covered",
+                    "sounds like a plan", "agreed on all points"
+                ]
+                if any(phrase in response.lower() for phrase in conclusive_phrases):
+                    print(f"  → Detected natural wrap-up at turn {turn+1}")
+                    break
+        
+        # Complete
+        complete_session(session_id, artifacts={
+            'type': session_type,
+            'turns': len(conversation),
+            'tool_calls_total': len(all_tool_calls),
+            'participants': agents
+        })
+    finally:
+        # Reset states
+        for agent_id in agents:
+            update_agent(agent_id, state='idle', current_location='lounge')
+            set_agent_busy(agent_id, False)
+            trigger_inbox_request_if_idle(agent_id)
+        
+        print(f"  ✅ Meeting done\n")
 
 
 # ============================================================
@@ -371,10 +557,12 @@ async def run_task(entry: dict):
     try:
         if task_type == "solo":
             agent_id = entry["agent"]
+            await wait_until_agents_idle([agent_id])
             await run_solo(agent_id, task_prompt, session_type)
         
         elif task_type == "meeting":
             agents = resolve_agents(entry["agents"])
+            await wait_until_agents_idle(agents)
             await run_meeting(agents, task_prompt, session_type)
     
     except Exception as e:
@@ -393,6 +581,9 @@ def start():
     print(f"   Time: {datetime.now().strftime('%I:%M %p, %B %d %Y')}")
     print(f"   Tasks: {len(SCHEDULE)}")
     print()
+
+    # Start mailbox poller so inbox checks happen every minute.
+    start_inbox_poller()
     
     # Schedule each task
     for entry in SCHEDULE:
@@ -482,4 +673,3 @@ if __name__ == '__main__':
             start()
         except KeyboardInterrupt:
             print("\n👋 Engine stopped")
-

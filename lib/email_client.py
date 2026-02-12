@@ -7,6 +7,7 @@ import os
 import smtplib
 import imaplib
 import email
+from email.utils import parseaddr
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Optional
@@ -131,6 +132,60 @@ class EmailClient:
         except Exception as e:
             print(f"Error parsing email replies: {e}")
             return {}
+
+    def get_pending_messages_for_agent(self, agent_id: str, limit: int = 3) -> List[dict]:
+        """
+        Fetch unread inbox messages that appear relevant to an agent.
+        A message is relevant when subject/body contains the agent id or generic team keywords.
+        Marks matched messages as seen to avoid re-processing.
+        """
+        messages = []
+        try:
+            mail = imaplib.IMAP4_SSL(self.imap_host)
+            mail.login(self.email_address, self.email_password)
+            mail.select("inbox")
+
+            status, message_numbers = mail.search(None, "UNSEEN")
+            if status != "OK" or not message_numbers or not message_numbers[0]:
+                mail.close()
+                mail.logout()
+                return messages
+
+            ids = message_numbers[0].split()
+            # Newest first
+            for num in reversed(ids):
+                if len(messages) >= limit:
+                    break
+
+                status, msg_data = mail.fetch(num, "(RFC822)")
+                if status != "OK" or not msg_data:
+                    continue
+
+                raw = msg_data[0][1]
+                email_message = email.message_from_bytes(raw)
+                subject = email_message.get("Subject", "")
+                body = self._get_email_body(email_message)
+                haystack = f"{subject}\n{body}".lower()
+                agent_key = agent_id.lower()
+
+                if not self._is_message_for_agent(agent_key, haystack):
+                    continue
+
+                sender = parseaddr(email_message.get("From", ""))[1] or email_message.get("From", "unknown")
+                messages.append({
+                    "from": sender,
+                    "subject": subject.strip(),
+                    "body": body.strip(),
+                })
+                # Mark only consumed messages as seen.
+                mail.store(num, "+FLAGS", "\\Seen")
+
+            mail.close()
+            mail.logout()
+            return messages
+        except Exception as e:
+            print(f"Error reading inbox for {agent_id}: {e}")
+            return []
     
     def _send_email(self, to: str, subject: str, body: str, session_id: Optional[str] = None) -> bool:
         """Send an email via SMTP."""
@@ -168,3 +223,11 @@ class EmailClient:
             return email_message.get_payload(decode=True).decode()
         return ""
 
+    def _is_message_for_agent(self, agent_key: str, haystack: str) -> bool:
+        generic_keywords = [
+            "team",
+            "all agents",
+            "everyone",
+            "all hands",
+        ]
+        return agent_key in haystack or any(k in haystack for k in generic_keywords)

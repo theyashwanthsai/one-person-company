@@ -79,6 +79,7 @@ build/
 secrets/
 *.key
 *.pem
+dashboard.config.js
 
 # OS
 Thumbs.db
