@@ -47,6 +47,14 @@ WantedBy=multi-user.target
 EOF
 
 echo "==> Configuring Nginx site: ${NGINX_SITE}"
+if ! command -v nginx >/dev/null 2>&1; then
+  echo "==> Nginx not found. Installing..."
+  sudo apt-get update
+  sudo apt-get install -y nginx
+fi
+
+sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
 sudo tee "/etc/nginx/sites-available/${NGINX_SITE}" > /dev/null <<EOF
 server {
     listen 80 default_server;
