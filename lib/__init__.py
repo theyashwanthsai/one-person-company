@@ -1,76 +1,50 @@
-from .agents import (
-    load_all_agents_metadata,
-    load_agent_full,
-    get_agent_db,
-    update_agent_state,
-    update_agent_location,
-    load_agent_prompt,
-    load_agent_reference,
-    get_all_agents
-)
+"""Lazy package exports for core library helpers.
 
-from .llm import (
-    chat_completion,
-    chat_completion_json,
-    chat_with_history
-)
+Avoid importing modules with external client initialization at package import time.
+"""
 
-from .learnings import (
-    query_learnings,
-    write_learning,
-    boost_learning,
-    dismiss_learning,
-    get_learning,
-    get_agent_learnings_summary
-)
+from importlib import import_module
 
-from .memories import (
-    store_memory,
-    query_memories,
-    get_memory,
-    link_memory_to_learning
-)
+_EXPORT_MAP = {
+    "load_all_agents_metadata": "lib.agents",
+    "load_agent_full": "lib.agents",
+    "get_agent_db": "lib.agents",
+    "update_agent_state": "lib.agents",
+    "update_agent_location": "lib.agents",
+    "load_agent_prompt": "lib.agents",
+    "load_agent_reference": "lib.agents",
+    "get_all_agents": "lib.agents",
+    "chat_completion": "lib.llm",
+    "chat_completion_json": "lib.llm",
+    "chat_with_history": "lib.llm",
+    "query_learnings": "lib.learnings",
+    "write_learning": "lib.learnings",
+    "boost_learning": "lib.learnings",
+    "dismiss_learning": "lib.learnings",
+    "get_learning": "lib.learnings",
+    "get_agent_learnings_summary": "lib.learnings",
+    "store_memory": "lib.memories",
+    "query_memories": "lib.memories",
+    "get_memory": "lib.memories",
+    "link_memory_to_learning": "lib.memories",
+    "create_session": "lib.sessions",
+    "get_session": "lib.sessions",
+    "update_session": "lib.sessions",
+    "append_turn": "lib.sessions",
+    "complete_session": "lib.sessions",
+    "fail_session": "lib.sessions",
+    "get_recent_sessions": "lib.sessions",
+    "add_learning_to_session": "lib.sessions",
+}
 
-from .sessions import (
-    create_session,
-    get_session,
-    update_session,
-    append_turn,
-    complete_session,
-    fail_session,
-    get_recent_sessions,
-    add_learning_to_session
-)
+__all__ = list(_EXPORT_MAP.keys())
 
-__all__ = [
-    'load_all_agents_metadata',
-    'load_agent_full',
-    'get_agent_db',
-    'update_agent_state',
-    'update_agent_location',
-    'load_agent_prompt',
-    'load_agent_reference',
-    'get_all_agents',
-    'chat_completion',
-    'chat_completion_json',
-    'chat_with_history',
-    'query_learnings',
-    'write_learning',
-    'boost_learning',
-    'dismiss_learning',
-    'get_learning',
-    'get_agent_learnings_summary',
-    'store_memory',
-    'query_memories',
-    'get_memory',
-    'link_memory_to_learning',
-    'create_session',
-    'get_session',
-    'update_session',
-    'append_turn',
-    'complete_session',
-    'fail_session',
-    'get_recent_sessions',
-    'add_learning_to_session',
-]
 
+def __getattr__(name):
+    module_name = _EXPORT_MAP.get(name)
+    if not module_name:
+        raise AttributeError(f"module 'lib' has no attribute '{name}'")
+    module = import_module(module_name)
+    value = getattr(module, name)
+    globals()[name] = value
+    return value
