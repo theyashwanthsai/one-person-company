@@ -3,9 +3,9 @@ Tool: scan_external_source
 Search external signals (Twitter, Reddit, HN content) stored in the database.
 
 Note: This searches STORED signals. To fetch NEW content, use:
-- ingest_twitter (fetch fresh tweets)
-- ingest_reddit (fetch fresh Reddit posts)  
-- ingest_hackernews (fetch fresh HN stories)
+- surf_twitter (fetch fresh tweets)
+- surf_reddit (fetch fresh Reddit posts)  
+- surf_hn (fetch fresh Hacker News stories)
 """
 
 import os
@@ -68,4 +68,3 @@ def execute(agent_id: str, **kwargs):
         lines.append(f"- [{s.get('source', '?')}] {s.get('title', 'Untitled')}{eng}\n  Tags: {s.get('tags', [])}")
 
     return f"Found {len(result.data)} signals:\n" + "\n".join(lines)
-

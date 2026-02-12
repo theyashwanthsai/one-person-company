@@ -35,15 +35,15 @@ class EmailClient:
         
         body = f"""Hi!
 
-Your daily standup with the team starts in 5 minutes.
+        Your daily standup with the team starts in 5 minutes.
 
-You'll receive a questionnaire email shortly where each agent will share their updates.
+        You'll receive a questionnaire email shortly where each agent will share their updates.
 
-Session ID: {session_id}
-Time: {scheduled_time}
+        Session ID: {session_id}
+        Time: {scheduled_time}
 
-See you soon!
-"""
+        See you soon!
+        """
         
         return self._send_email(self.ceo_email, subject, body)
     
@@ -54,16 +54,16 @@ See you soon!
         # Email to CEO
         ceo_body = f"""Time for standup! 
 
-Your team will respond with their updates below. Please reply with your feedback once you've reviewed them.
+        Your team will respond with their updates below. Please reply with your feedback once you've reviewed them.
 
-Session ID: {session_id}
+        Session ID: {session_id}
 
----
+        ---
 
-Agents participating: {', '.join(agents)}
+        Agents participating: {', '.join(agents)}
 
-Please reply to this email with your feedback or questions. Take your time (1-3 minutes).
-"""
+        Please reply to this email with your feedback or questions. Take your time (1-3 minutes).
+        """
         
         return self._send_email(
             self.ceo_email, 
@@ -78,16 +78,16 @@ Please reply to this email with your feedback or questions. Take your time (1-3 
         
         body = f"""Hi {agent_id},
 
-Please provide your standup update by replying to this email:
+        Please provide your standup update by replying to this email:
 
-1. What changed since last time?
-2. What are you confident about?
-3. What are you uncertain about?
+        1. What changed since last time?
+        2. What are you confident about?
+        3. What are you uncertain about?
 
-Keep it brief (2-3 sentences per question). You have 1-3 minutes.
+        Keep it brief (2-3 sentences per question). You have 1-3 minutes.
 
-Session ID: {session_id}
-"""
+        Session ID: {session_id}
+        """
         
         return self._send_email(agent_email, subject, body, session_id=session_id)
     

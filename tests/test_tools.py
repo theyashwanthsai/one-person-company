@@ -1,24 +1,33 @@
 """
 Test the tool system — discovery, schemas, and execution.
-Run: python3 scripts/test_tools.py
+Run: python3 tests/test_tools.py
 """
 
+import asyncio
 import os
 import sys
-import asyncio
-from dotenv import load_dotenv
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-load_dotenv()
+# Add repo root so shared modules can be imported even when the script lives in tests/
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
 
-from lib.tool_registry import discover_shared_tools, get_tools_for_agent, get_tool_schemas, list_tools
+from utils import print_header, setup_test_environment
+from lib.tool_registry import (
+    discover_shared_tools,
+    get_tools_for_agent,
+    get_tool_schemas,
+    list_tools,
+    execute_tool
+)
+from lib.tool_runner import run_agent_step
+
+setup_test_environment()
 
 
 def test_discovery():
     """Test tool discovery."""
-    print("=" * 60)
-    print("TEST 1: Shared tool discovery")
-    print("=" * 60)
+    print_header("TEST 1: Shared tool discovery")
     
     tools = discover_shared_tools()
     print(f"Found {len(tools)} shared tools:")
@@ -32,9 +41,7 @@ def test_discovery():
 
 def test_agent_tools():
     """Test per-agent tool resolution."""
-    print("=" * 60)
-    print("TEST 2: Agent tool resolution")
-    print("=" * 60)
+    print_header("TEST 2: Agent tool resolution")
     
     for agent_id in ['strategist_lead', 'creator_lead', 'analyst_lead']:
         tools = get_tools_for_agent(agent_id)
@@ -46,9 +53,7 @@ def test_agent_tools():
 
 def test_schemas():
     """Test that schemas are valid OpenAI format."""
-    print("=" * 60)
-    print("TEST 3: Schema validation")
-    print("=" * 60)
+    print_header("TEST 3: Schema validation")
     
     schemas = get_tool_schemas('strategist_lead')
     
@@ -69,11 +74,7 @@ def test_schemas():
 
 async def test_execution():
     """Test tool execution."""
-    print("=" * 60)
-    print("TEST 4: Tool execution")
-    print("=" * 60)
-    
-    from lib.tool_registry import execute_tool
+    print_header("TEST 4: Tool execution")
     
     # Test query_learnings (should work even with no data)
     result = await execute_tool('strategist_lead', 'query_learnings', {
@@ -105,11 +106,7 @@ async def test_execution():
 
 async def test_agent_step():
     """Test running an agent with tools (makes LLM call)."""
-    print("=" * 60)
-    print("TEST 5: Agent step with tools (LLM call)")
-    print("=" * 60)
-    
-    from lib.tool_runner import run_agent_step
+    print_header("TEST 5: Agent step with tools (LLM call)")
     
     response, tool_calls = await run_agent_step(
         agent_id='strategist_lead',
@@ -125,7 +122,7 @@ async def test_agent_step():
 
 
 def main():
-    print("\n🔧 Tool System Tests\n")
+    print_header("🔧 Tool System Tests")
     
     test_discovery()
     test_agent_tools()
@@ -146,4 +143,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

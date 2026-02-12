@@ -1,3 +1,14 @@
+import os
+import sys
+from pathlib import Path
+# Add repo root so shared modules can be imported even when the script lives in tests/
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+from utils import print_header, setup_test_environment
+
+setup_test_environment()
+
 from lib import (
     query_learnings,
     write_learning,
@@ -8,11 +19,8 @@ from lib import (
     complete_session
 )
 
-print("🧪 Testing Core Libraries\n")
-
-print("=" * 60)
-print("1. Testing Learning System")
-print("=" * 60)
+print_header("🧪 Testing Core Libraries")
+print_header("1. Learning System")
 
 try:
     learnings = query_learnings('strategist_lead', limit=3)
@@ -22,9 +30,7 @@ try:
 except Exception as e:
     print(f"✗ Learning query failed: {e}")
 
-print("\n" + "=" * 60)
-print("2. Testing Memory System")
-print("=" * 60)
+print_header("2. Memory System")
 
 try:
     memory = store_memory(
@@ -40,9 +46,7 @@ try:
 except Exception as e:
     print(f"✗ Memory test failed: {e}")
 
-print("\n" + "=" * 60)
-print("3. Testing Session System")
-print("=" * 60)
+print_header("3. Session System")
 
 try:
     session_id = create_session(
@@ -64,4 +68,3 @@ print("\n" + "=" * 60)
 print("✅ Core Libraries Test Complete!")
 print("=" * 60)
 print("\nAll systems operational. Ready to build workers!")
-

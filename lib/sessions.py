@@ -110,11 +110,13 @@ def add_learning_to_session(session_id: UUID, learning_id: UUID):
     session = get_session(session_id)
     if not session:
         return
-    
-    learnings_created = session.get('learnings_created', [])
+
+    if session.get("type") == "solo":
+        return
+
+    learnings_created = session.get("learnings_created", [])
     if str(learning_id) not in learnings_created:
         learnings_created.append(str(learning_id))
         supabase.table("sessions").update({
             "learnings_created": learnings_created
         }).eq("id", str(session_id)).execute()
-

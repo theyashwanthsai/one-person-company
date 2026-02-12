@@ -17,22 +17,25 @@ API_KEY = os.getenv("TWITTER_API_KEY")
 API_SECRET = os.getenv("TWITTER_API_SECRET")
 
 SCHEMA = {
-    "name": "publish_content",
-    "description": "Post content to Twitter. Can post single tweets or threads. Use this when you have content ready to publish. The tweet will be posted immediately.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "text": {
-                "type": "string",
-                "description": "Tweet text (max 280 characters). For threads, separate tweets with '\\n---\\n'"
+    "type": "function",
+    "function": {
+        "name": "publish_content",
+        "description": "Post content to Twitter. Can post single tweets or threads. Use this when you have content ready to publish. The tweet will be posted immediately.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "Tweet text (max 280 characters). For threads, separate tweets with '\\n---\\n'"
+                },
+                "draft_id": {
+                    "type": "string",
+                    "description": "Optional: Content pipeline ID if this is publishing a draft",
+                    "default": None
+                }
             },
-            "draft_id": {
-                "type": "string",
-                "description": "Optional: Content pipeline ID if this is publishing a draft",
-                "default": None
-            }
-        },
-        "required": ["text"]
+            "required": ["text"]
+        }
     }
 }
 
@@ -138,4 +141,3 @@ async def execute(text: str, draft_id: Optional[str] = None) -> dict:
             "success": False,
             "error": f"Failed to publish content: {str(e)}"
         }
-

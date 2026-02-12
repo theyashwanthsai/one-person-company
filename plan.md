@@ -158,7 +158,7 @@
 - [x] `tools/scan_external_source.py` — search external signals
 - [x] `tools/check_content_pipeline.py` — view content pipeline status
 - [x] `run_agent_step()` — high-level: load soul + tools + run (one function call)
-- [x] Test script: `scripts/test_tools.py`
+- [x] Test script: `tests/test_tools.py`
 
 ## Engine Architecture ✅
 
@@ -203,9 +203,10 @@ All handled by agents via tools + engine schedule:
 
 ## External Integration Tools (COMPLETED)
 
-- [x] `tools/ingest_twitter.py` — fetch tweets via Twitter API v2
-- [x] `tools/ingest_reddit.py` — fetch Reddit posts via PRAW
-- [x] `tools/ingest_hackernews.py` — fetch HN stories via Firebase API
+- [x] `tools/surf_twitter.py` — fetch tweets via Twitter API v2
+- [x] `tools/store_external_signal.py` — persist surf_* payloads to external_signals
+- [x] `tools/surf_reddit.py` — fetch Reddit posts via public JSON endpoints
+- [x] `tools/surf_hn.py` — fetch HN stories via Algolia time-window API
 - [x] `tools/publish_content.py` — post tweets (single or threads)
 - [x] `tools/fetch_metrics.py` — pull engagement metrics and analyze performance
 - [x] Store metrics in content_pipeline — automatically done by fetch_metrics
@@ -232,6 +233,19 @@ All handled by agents via tools + engine schedule:
 - [x] Schedule strategist scans 3x per day — 08:00, 09:30, 11:30, 13:00, 16:00, 17:30
 - [x] Schedule performance analysis daily (evening) — 17:00
 - [ ] Add jitter (±30 min randomness)
+
+
+
+
+- [x] Remove solo_work in session table of the db. These sessions should lead to learnings/memories only i feel
+- [x] Twitter, Hackernews, Reddit tools must be made better.
+- [ ] Find a cheap tool for ai agents to surf internet like crazy.
+- [ ] a way to get our analyst to learn about past posts
+- [ ] analyst should be more of a team lead since it has less responsiblity
+- [ ] Sort out emails.
+- [ ] Add apis, but we shouldnt expose them. Should be strictly for testing
+- [ ] 
+
 
 ## FastAPI: Basic Server
 
@@ -464,4 +478,3 @@ All handled by agents via tools + engine schedule:
 - [ ] Implement memory consolidation (monthly compression)
 - [ ] Implement automatic archival system for old data
 - [ ] Add token counting and context budget management
-

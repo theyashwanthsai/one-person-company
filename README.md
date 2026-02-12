@@ -1,6 +1,6 @@
-# One Person Company - AI Social Media Team
+# One Person Company
 
-An autonomous AI team that manages your personal brand on social media. Built from first principles with sessions, learnings, and memory.
+An autonomous AI team that manages my personal brand on social media. Built from first principles. This is a structured, tool-augmented, session-driven autonomous organization.
 
 ## What This Is
 
@@ -17,6 +17,8 @@ A team of AI agents that:
 🎯 **Thea** (Strategy Lead) - Identifies themes and narratives  
 ✍️ **Kavi** (Content Creator) - Turns ideas into viral posts  
 📊 **Dara** (Data Analyst) - Tracks performance and extracts patterns
+
+> Will be "hiring" more
 
 ## Tech Stack
 
@@ -99,9 +101,11 @@ one_person_company/
 │   ├── write_learning.py
 │   ├── store_memory.py
 │   ├── recall_memories.py
-│   ├── ingest_twitter.py
-│   ├── ingest_reddit.py
-│   ├── ingest_hackernews.py
+│   ├── surf_twitter.py
+│   ├── surf_reddit.py
+│   ├── surf_hn.py
+│   ├── surf_twitter.py
+│   ├── store_external_signal.py
 │   ├── publish_content.py
 │   ├── fetch_metrics.py
 │   └── ...
@@ -168,4 +172,3 @@ Built from first principles:
 ## License
 
 MIT
-

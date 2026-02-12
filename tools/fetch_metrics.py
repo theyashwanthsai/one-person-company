@@ -13,22 +13,25 @@ from lib.supabase_client import get_supabase
 BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
 SCHEMA = {
-    "name": "fetch_metrics",
-    "description": "Fetch engagement metrics (likes, retweets, replies, impressions) for published tweets. Use this to analyze performance of your content and identify what's working.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "tweet_id": {
-                "type": "string",
-                "description": "Twitter tweet ID to fetch metrics for"
+    "type": "function",
+    "function": {
+        "name": "fetch_metrics",
+        "description": "Fetch engagement metrics (likes, retweets, replies, impressions) for published tweets. Use this to analyze performance of your content and identify what's working.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "tweet_id": {
+                    "type": "string",
+                    "description": "Twitter tweet ID to fetch metrics for"
+                },
+                "update_pipeline": {
+                    "type": "boolean",
+                    "description": "Whether to update the content_pipeline table with metrics",
+                    "default": True
+                }
             },
-            "update_pipeline": {
-                "type": "boolean",
-                "description": "Whether to update the content_pipeline table with metrics",
-                "default": True
-            }
-        },
-        "required": ["tweet_id"]
+            "required": ["tweet_id"]
+        }
     }
 }
 
@@ -153,4 +156,3 @@ async def execute(tweet_id: str, update_pipeline: bool = True) -> dict:
             "success": False,
             "error": f"Failed to fetch metrics: {str(e)}"
         }
-

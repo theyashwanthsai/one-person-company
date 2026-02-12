@@ -241,10 +241,10 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 - **Tool Runner** — LLM ↔ tool execution loop with retries
 - **12 Shared Tools** — learnings, memories, sessions, content pipeline, external integrations
 
-### ✅ External Integration Tools
-- **ingest_twitter.py** — Fetch tweets via Twitter API v2
-- **ingest_reddit.py** — Fetch Reddit posts via PRAW
-- **ingest_hackernews.py** — Fetch HN stories (no auth needed)
+- **surf_twitter.py** — Surf tweets via Twitter API v2
+- **surf_reddit.py** — Surf Reddit posts via public JSON endpoints
+- **surf_hn.py** — Fetch HN stories via Algolia with time-window filters
+- **store_external_signal.py** — Persist surf_* payloads to Supabase
 - **publish_content.py** — Post tweets (single or threads)
 - **fetch_metrics.py** — Pull engagement metrics and analyze performance
 
@@ -259,55 +259,67 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 
 ## External Integration Tools
 
-### Twitter (`ingest_twitter.py`)
+### Twitter (`surf_twitter.py`)
 ```python
-# Fetch tweets by search query
 result = await execute(
     query="from:elonmusk OR #AI",
-    max_results=50,
-    category="competitor_content"
+    max_results=50
 )
-# Returns: tweets_ingested, signal_ids, top_tweet
+# Returns: count, tweets, top_tweet
 ```
 
 **Features:**
 - Twitter API v2 recent search
-- Stores tweets as external_signals
-- Includes engagement metrics (likes, retweets, replies)
-- Author info and timestamp
+- Returns per-tweet metrics and raw JSON
+- Pair with `store_external_signal` when you want to persist select tweets
 
-### Reddit (`ingest_reddit.py`)
+### Reddit (`surf_reddit.py`)
 ```python
-# Fetch hot posts from subreddit
 result = await execute(
-    subreddit="MachineLearning",
-    sort="hot",  # or "new", "top", "rising"
-    limit=25,
-    time_filter="day"  # for "top" sort
+    subreddits=["MachineLearning", "buildapcsales"],
+    sort="new",
+    limit_per_subreddit=10,
+    min_score=5,
+    max_age_hours=12
 )
-# Returns: posts_ingested, signal_ids, top_post
+# Returns: count, posts, top_post
 ```
 
 **Features:**
-- PRAW (Python Reddit API Wrapper)
-- Sort by hot/new/top/rising
-- Engagement scores (upvotes × ratio + comments)
-- Filters out stickied posts
+- Public `/r/<subreddit>/<sort>.json` endpoints (no API key)
+- Supports hot/new/top/rising plus time filters for top
+- Filters by minimum score and max age
+- Returns structured metadata so you can decide what to save via `store_external_signal`
 
-### Hacker News (`ingest_hackernews.py`)
+### Hacker News (`surf_hn.py`)
 ```python
-# Fetch top HN stories
+# Surf the last few hours of HN stories
 result = await execute(
-    story_type="top",  # or "new", "best", "ask", "show"
-    limit=20
+    hours_window=6,        # past 6 hours
+    min_points=10,         # optional
+    max_posts=50
 )
-# Returns: stories_ingested, signal_ids, top_story
+# Returns: count, posts, top_post
 ```
 
 **Features:**
-- Firebase API (no auth required)
-- Includes score and comment count
-- Handles both links and text posts
+- Algolia search_by_date (supports time ranges and pagination)
+- Filter by minimum points / score
+- Includes structured content + raw payloads for each story
+
+### Store External Signal (`store_external_signal.py`)
+```python
+result = await execute(
+    source="hackernews",
+    category="hn_surf",
+    signals=[post1, post2]
+)
+# Returns: signals_stored, signal_ids
+```
+
+**Features:**
+- Persists structured payloads into `external_signals`
+- Adds `ingested_at` automatically and retains the supplied metrics/raw_data
 
 ### Publishing (`publish_content.py`)
 ```python
@@ -349,12 +361,12 @@ result = await execute(
 
 Run the test suite:
 ```bash
-python3 scripts/test_external_tools.py
+python3 tests/test_external_tools.py
 ```
 
 This will:
-1. Check your API credentials
-2. Test each ingestion tool
+1. Surf Hacker News, Reddit, and Twitter (when configured)
+2. Persist a small sample into `external_signals` via `store_external_signal` if Supabase credentials are present
 3. Optionally test publishing (confirmation required)
 4. Optionally test metrics fetching
 
@@ -403,9 +415,10 @@ Tools live in two places:
 - `email_ceo` — Send email to CEO (escalations, questions)
 
 **External Ingestion:**
-- `ingest_twitter` — Fetch tweets from accounts or search terms
-- `ingest_reddit` — Fetch posts from subreddits
-- `ingest_hackernews` — Fetch top/new/best HN stories
+- `surf_twitter` — Fetch tweets from accounts or search terms
+- `surf_reddit` — Surf Reddit posts via public JSON endpoints
+- `surf_hn` — Surf Hacker News stories via Algolia time-window search
+- `store_external_signal` — Persist selected signals after surf_ tools run
 - `scan_external_source` — Search stored external signals
 
 **Content & Publishing:**
@@ -457,7 +470,7 @@ That's it. The registry auto-discovers it.
 ### Testing
 
 ```bash
-python3 scripts/test_tools.py
+python3 tests/test_tools.py
 ```
 
 ---
@@ -613,4 +626,3 @@ migrations/011_create_content_pipeline.sql
 ```
 
 See `plan.md` for full build order.
-
