@@ -4,16 +4,26 @@ Run this to verify your API credentials are working.
 
 import asyncio
 import os
+import sys
+from pathlib import Path
 
-from tests.utils import print_header, setup_test_environment
+# Add repo root so shared modules can be imported even when the script lives in tests/
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+from datetime import datetime
+
+from utils import print_header, setup_test_environment
 
 from tools.store_external_signal import execute as store_external_signal
 from tools.surf_hn import execute as surf_hn
 from tools.surf_reddit import execute as surf_reddit
+from tools.publish_content import execute as publish_content
 
 setup_test_environment()
 
 SUPABASE_READY = bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+RUN_PUBLISH_TEST = os.getenv("RUN_TWITTER_PUBLISH_TEST") == "1"
 
 
 async def _maybe_store(signals, source: str, category: str):
@@ -25,12 +35,12 @@ async def _maybe_store(signals, source: str, category: str):
 
 
 async def test_twitter():
-    """Twitter surf is disabled until we re-enable the tool."""
+    """Twitter surf is disabled until the surf_twitter tool returns."""
     print_header("🐦 Twitter surf is currently suspended (skipped)")
 
 
 async def test_reddit():
-    """Test Reddit ingestion."
+    """Test Reddit ingestion."""
     print_header("🔴 Testing Reddit ingestion")
     result = await surf_reddit(
         subreddits=["ArcRaiders", "MachineLearning"],
@@ -71,6 +81,19 @@ async def test_hackernews():
     await _maybe_store(posts, source="hackernews", category="test_scan")
 
 
+async def test_publish_content():
+    """Optionally test the publishing tool (requires RUN_TWITTER_PUBLISH_TEST=1)."""
+    print_header("📤 Testing Twitter publishing")
+    timestamp = datetime.utcnow().strftime("%H:%M:%S")
+    text = os.getenv("TWITTER_PUBLISH_TEST_TEXT", f"Automated test post at {timestamp}")
+
+    result = await publish_content(text=text)
+    if result.get("success"):
+        print(f"✅ Published {result.get('tweets_posted')} tweet(s): {result.get('primary_url')}")
+    else:
+        print(f"❌ Publish failed: {result.get('error')}")
+
+
 async def main():
     print_header("🧪 External Tools Test Suite")
 
@@ -84,6 +107,8 @@ async def main():
 
     if has_twitter:
         await test_twitter()
+        if RUN_PUBLISH_TEST:
+            await test_publish_content()
 
     print_header("✅ Test suite complete")
 
