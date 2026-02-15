@@ -97,10 +97,23 @@ sudo systemctl enable --now nginx
 sudo nginx -t
 sudo systemctl reload nginx
 
+# If UFW is enabled, ensure web traffic is allowed.
+if command -v ufw >/dev/null 2>&1; then
+  UFW_STATE="$(sudo ufw status | head -n1 || true)"
+  if [[ "${UFW_STATE}" == *"Status: active"* ]]; then
+    echo "==> UFW is active. Allowing HTTP/HTTPS traffic."
+    sudo ufw allow 'Nginx Full'
+  fi
+fi
+
 echo
 echo "Deployment complete."
 echo "Backend status:"
 sudo systemctl --no-pager --full status "${SERVICE_NAME}" | sed -n '1,12p'
 echo
+echo "Nginx status:"
+sudo systemctl --no-pager --full status nginx | sed -n '1,12p'
+echo
 echo "Frontend URL: http://<your-vps-ip>/dashboard.html"
+echo "Quick local check on VPS: curl -I http://127.0.0.1/dashboard.html"
 echo "Backend logs: journalctl -u ${SERVICE_NAME} -f"
