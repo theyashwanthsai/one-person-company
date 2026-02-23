@@ -228,7 +228,7 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 - **Core Libraries** - LLM, learnings, memories, sessions, agents
 
 ### ✅ Sessions System
-- **CEO Standup** - Email-based async standup with agents
+- **CEO Standup** - Discord-based async standup with agents
 - **Brainstorm** - Creative ideation (Strategist + Creator)
 - **Market Review** - Content validation with benchmarks
 - **Watercooler** - Casual chats for weak signals
@@ -249,7 +249,7 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 
 ### 🚧 Next Up
 - **Frontend** - Pixel art office dashboard
-- **Email Client** - Complete CEO standup email flow
+- **Discord Client** - Complete CEO standup + direct request flow
 - **Deployment** - Production setup and cron jobs
 
 **Progress:** 90+ items complete in `plan.md` (out of 150+)
@@ -397,7 +397,7 @@ Tools live in two places:
 
 **Communication:**
 - `request_1on1` — Request conversation with another agent
-- `email_ceo` — Send email to CEO (escalations, questions)
+- `discord_ceo` — Send Discord message to CEO (escalations, questions)
 
 **External Ingestion:**
 - `surf_reddit` — Surf Reddit posts via public JSON endpoints
@@ -461,7 +461,9 @@ python3 tests/test_tools.py
 
 ## Engine — `workers/engine.py`
 
-The entire company runs from one file. One schedule. Each entry prompts an agent with a task, and the agent uses their tools to do the actual work.
+`workers/engine.py` orchestrates execution. Schedule data and Discord inbox logic are now split out:
+- Schedule file: `workers/schedule.md`
+- Discord inbox runtime: `lib/discord_inbox.py`
 
 ### How It Works
 
@@ -511,7 +513,7 @@ python3 workers/engine.py --list
 
 ### Adding a New Task
 
-Add one entry to the `SCHEDULE` list in `engine.py`:
+Add one entry to the list in `workers/schedule.md`:
 
 ```python
 {
@@ -532,18 +534,17 @@ Ideas flow through: `idea → approved → drafted → posted → analyzed`
 SELECT title, status, priority FROM content_pipeline ORDER BY created_at DESC;
 ```
 
-### Email Setup (for CEO standup)
+### Discord Setup (for CEO standup + direct requests)
 
-1. Enable 2-Step Verification at https://myaccount.google.com/security
-2. Create App Password at https://myaccount.google.com/apppasswords
+1. Create bot(s) at https://discord.com/developers/applications
+2. Add the bot(s) to your server with permission to read/send messages in `#general` and `#standup`
 3. Add to `.env`:
 ```bash
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-IMAP_HOST=imap.gmail.com
-EMAIL_ADDRESS=your-bot-email@gmail.com
-EMAIL_PASSWORD=your-16-char-app-password
-CEO_EMAIL=your-personal-email@gmail.com
+DISCORD_BOT_TOKEN=your-discord-bot-token
+DISCORD_CEO_USER_ID=your-discord-user-id
+DISCORD_GENERAL_CHANNEL_ID=your-general-channel-id
+DISCORD_STANDUP_CHANNEL_ID=your-standup-channel-id
+DISCORD_POLL_SECONDS=60
 ```
 
 ---

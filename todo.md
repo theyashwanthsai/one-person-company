@@ -1,0 +1,3 @@
+- [x] Memory is still shit
+- [ ] Tool calling is weird 
+- [x] Agent messages on discord is weird, format needs to be human. Basically they are not stored for every run, and they are not retrieved in every run

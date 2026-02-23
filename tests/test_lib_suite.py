@@ -5,7 +5,6 @@ import sys
 import tempfile
 import types
 import unittest
-from email.mime.text import MIMEText
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -325,47 +324,6 @@ class TestToolRunner(unittest.TestCase):
             asyncio.run(self.module.run_agent_step("a", "task", context="ctx"))
         kwargs = run_agent.call_args.kwargs
         self.assertIn("--- Context ---", kwargs["user_prompt"])
-
-
-class TestEmailClient(unittest.TestCase):
-    def setUp(self):
-        self.env = {
-            "EMAIL_ADDRESS": "bot@example.com",
-            "EMAIL_PASSWORD": "secret",
-            "CEO_EMAIL": "ceo@example.com",
-            "SMTP_HOST": "smtp.example.com",
-            "SMTP_PORT": "587",
-            "IMAP_HOST": "imap.example.com",
-        }
-
-    def test_init_requires_credentials(self):
-        module = fresh_import("lib.email_client")
-        with patch.dict(os.environ, {}, clear=True):
-            with self.assertRaises(ValueError):
-                module.EmailClient()
-
-    def test_send_email_success(self):
-        module = fresh_import("lib.email_client")
-        with patch.dict(os.environ, self.env, clear=False), patch("lib.email_client.smtplib.SMTP") as smtp:
-            smtp.return_value.__enter__.return_value = MagicMock()
-            client = module.EmailClient()
-            ok = client._send_email("x@example.com", "subj", "body")
-            self.assertTrue(ok)
-
-    def test_get_email_body_plain(self):
-        module = fresh_import("lib.email_client")
-        with patch.dict(os.environ, self.env, clear=False):
-            client = module.EmailClient()
-        msg = MIMEText("hello", "plain")
-        self.assertEqual(client._get_email_body(msg), "hello")
-
-    def test_is_message_for_agent(self):
-        module = fresh_import("lib.email_client")
-        with patch.dict(os.environ, self.env, clear=False):
-            client = module.EmailClient()
-        self.assertTrue(client._is_message_for_agent("strategist", "hello strategist_lead"))
-        self.assertTrue(client._is_message_for_agent("strategist", "team update"))
-        self.assertFalse(client._is_message_for_agent("strategist", "unrelated note"))
 
 
 class TestLibInit(unittest.TestCase):

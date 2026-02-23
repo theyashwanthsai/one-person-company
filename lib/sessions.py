@@ -1,4 +1,5 @@
 import os
+import time
 from supabase import create_client
 from typing import List, Optional
 from uuid import UUID
@@ -8,6 +9,25 @@ supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 )
+
+MAX_DB_RETRIES = 3
+RETRY_BASE_SECONDS = 0.5
+
+
+def _execute_with_retry(op_name: str, fn):
+    """Retry transient Supabase/PostgREST failures."""
+    last_error = None
+    for attempt in range(MAX_DB_RETRIES):
+        try:
+            return fn()
+        except Exception as e:
+            last_error = e
+            if attempt == MAX_DB_RETRIES - 1:
+                break
+            sleep_for = RETRY_BASE_SECONDS * (2 ** attempt)
+            print(f"  ⚠️ {op_name} failed (attempt {attempt + 1}/{MAX_DB_RETRIES}): {e}")
+            time.sleep(sleep_for)
+    raise last_error
 
 
 def create_session(
@@ -27,17 +47,26 @@ def create_session(
         "started_at": datetime.utcnow().isoformat()
     }
     
-    result = supabase.table("sessions").insert(session_data).execute()
+    result = _execute_with_retry(
+        "create_session",
+        lambda: supabase.table("sessions").insert(session_data).execute(),
+    )
     return result.data[0]['id'] if result.data else None
 
 
 def get_session(session_id: UUID) -> Optional[dict]:
-    result = supabase.table("sessions").select("*").eq("id", str(session_id)).execute()
+    result = _execute_with_retry(
+        "get_session",
+        lambda: supabase.table("sessions").select("*").eq("id", str(session_id)).execute(),
+    )
     return result.data[0] if result.data else None
 
 
 def update_session(session_id: UUID, updates: dict):
-    supabase.table("sessions").update(updates).eq("id", str(session_id)).execute()
+    _execute_with_retry(
+        "update_session",
+        lambda: supabase.table("sessions").update(updates).eq("id", str(session_id)).execute(),
+    )
 
 
 def append_turn(
@@ -61,9 +90,12 @@ def append_turn(
     
     conversation.append(turn_data)
     
-    supabase.table("sessions").update({
-        "conversation": conversation
-    }).eq("id", str(session_id)).execute()
+    _execute_with_retry(
+        "append_turn",
+        lambda: supabase.table("sessions").update({
+            "conversation": conversation
+        }).eq("id", str(session_id)).execute(),
+    )
 
 
 def complete_session(session_id: UUID, artifacts: Optional[dict] = None):
@@ -75,15 +107,21 @@ def complete_session(session_id: UUID, artifacts: Optional[dict] = None):
     if artifacts:
         updates["artifacts"] = artifacts
     
-    supabase.table("sessions").update(updates).eq("id", str(session_id)).execute()
+    _execute_with_retry(
+        "complete_session",
+        lambda: supabase.table("sessions").update(updates).eq("id", str(session_id)).execute(),
+    )
 
 
 def fail_session(session_id: UUID, error: str):
-    supabase.table("sessions").update({
-        "status": "failed",
-        "error_log": error,
-        "ended_at": datetime.utcnow().isoformat()
-    }).eq("id", str(session_id)).execute()
+    _execute_with_retry(
+        "fail_session",
+        lambda: supabase.table("sessions").update({
+            "status": "failed",
+            "error_log": error,
+            "ended_at": datetime.utcnow().isoformat()
+        }).eq("id", str(session_id)).execute(),
+    )
 
 
 def get_recent_sessions(
@@ -102,7 +140,10 @@ def get_recent_sessions(
     query = query.order("created_at", desc=True)
     query = query.limit(limit)
     
-    result = query.execute()
+    result = _execute_with_retry(
+        "get_recent_sessions",
+        lambda: query.execute(),
+    )
     return result.data
 
 
@@ -117,6 +158,9 @@ def add_learning_to_session(session_id: UUID, learning_id: UUID):
     learnings_created = session.get("learnings_created", [])
     if str(learning_id) not in learnings_created:
         learnings_created.append(str(learning_id))
-        supabase.table("sessions").update({
-            "learnings_created": learnings_created
-        }).eq("id", str(session_id)).execute()
+        _execute_with_retry(
+            "add_learning_to_session",
+            lambda: supabase.table("sessions").update({
+                "learnings_created": learnings_created
+            }).eq("id", str(session_id)).execute(),
+        )
