@@ -8,9 +8,7 @@ Agents are modular, version-controlled, and extensible. Each agent is a **skill 
 agents/
 ├── strategist_lead/
 │   ├── soul.md              # REQUIRED: Personality + instructions
-│   ├── tools/               # Optional: Agent-specific tools
-│   ├── references/          # Optional: Knowledge base
-│   └── prompts/             # Optional: Session-specific prompts
+│   └── skills/              # Optional: Session/task-specific skills
 ```
 
 ## The `soul.md` File
@@ -52,7 +50,7 @@ The system uses **progressive disclosure** for efficiency:
 
 1. **At Startup**: Only metadata (name, role, description) is loaded
 2. **When Needed**: Full soul instructions loaded into context
-3. **On Demand**: Tools, references, and prompts loaded as needed
+3. **On Demand**: Skills loaded as needed
 
 This keeps the system fast even with many agents.
 
@@ -90,46 +88,12 @@ python scripts/register_agents.py
 
 Done! The new agent is now part of the team.
 
-## Agent-Specific Tools
+## Agent Skills
 
-Place Python scripts in `tools/` folder:
-
-```python
-# agents/strategist_lead/tools/scan_trends.py
-
-def scan_trends(source, query):
-    # Custom logic for this agent
-    pass
-```
-
-These tools are available only to that specific agent.
-
-## References (Knowledge Base)
-
-Store domain knowledge in `references/`:
+Store reusable session/task instructions in `skills/`:
 
 ```markdown
-# agents/analyst_lead/references/engagement_benchmarks.md
-
-## Twitter Engagement Benchmarks
-- Good: 3-5% engagement rate
-- Great: 5-8% engagement rate
-- Viral: 8%+ engagement rate
-```
-
-Load on-demand during sessions:
-```python
-from lib.agents import load_agent_reference
-
-benchmarks = load_agent_reference('analyst_lead', 'engagement_benchmarks')
-```
-
-## Session-Specific Prompts
-
-Store prompts for different session types:
-
-```markdown
-# agents/strategist_lead/prompts/standup.md
+# agents/strategist_lead/skills/standup.md
 
 You're participating in daily standup.
 
@@ -141,9 +105,9 @@ Answer these 3 questions:
 
 Load during session:
 ```python
-from lib.agents import load_agent_prompt
+from lib.agents import load_agent_skill
 
-standup_prompt = load_agent_prompt('strategist_lead', 'standup')
+standup_skill = load_agent_skill('strategist_lead', 'standup')
 ```
 
 ## Why This Approach?
@@ -151,7 +115,7 @@ standup_prompt = load_agent_prompt('strategist_lead', 'standup')
 ✅ **Version Control**: `git diff` shows personality changes  
 ✅ **Portable**: Copy folder to share agent  
 ✅ **Modular**: Each agent is self-contained  
-✅ **Extensible**: Add tools/references without touching core code  
+✅ **Extensible**: Add skills without touching core code  
 ✅ **Editable**: Edit markdown files, no database updates  
 ✅ **Hot Reload**: Changes picked up on next session  
 
@@ -170,4 +134,3 @@ standup_prompt = load_agent_prompt('strategist_lead', 'standup')
 - `reddit_strategist` - Reddit-specific strategy
 - `instagram_creator` - Instagram content
 - `personal_manager` - CEO's calendar and priorities
-

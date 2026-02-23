@@ -109,7 +109,7 @@ one_person_company/
 │   └── ...
 ├── workers/            # Orchestration
 │   └── engine.py       # Central scheduler (all sessions + tasks)
-├── agents/             # Agent folders (soul.md + prompts + tools)
+├── agents/             # Agent folders (soul.md + skills)
 │   ├── strategist_lead/
 │   ├── creator_lead/
 │   └── analyst_lead/

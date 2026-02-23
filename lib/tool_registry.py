@@ -8,7 +8,7 @@ Convention: Each tool is a Python file with:
 
 Tools live in two places:
     tools/                        — shared tools (all agents)
-    agents/<agent_id>/tools/      — agent-specific tools (override or extend)
+    agents/<agent_id>/tools/      — optional legacy agent-specific tools
 """
 
 import os
@@ -92,7 +92,7 @@ def discover_shared_tools() -> Dict[str, dict]:
 
 def discover_agent_tools(agent_id: str) -> Dict[str, dict]:
     """
-    Discover agent-specific tools from agents/<agent_id>/tools/.
+    Discover optional legacy agent-specific tools from agents/<agent_id>/tools/.
     
     Returns:
         Dict of {tool_name: {"schema": ..., "module": ..., "source": agent_id}}
@@ -206,4 +206,3 @@ def list_tools(agent_id: Optional[str] = None):
         print(f"  • {name} [{tool['source']}] — {desc[:60]}")
     
     print(f"\n  Total: {len(tools)} tools\n")
-

@@ -39,7 +39,7 @@ SCHEMA = {
 def execute(agent_id: str, **kwargs):
     """Send Discord message to CEO."""
     try:
-        from lib.discord_client import DiscordClient
+        from lib.discord.client import DiscordClient
         client = DiscordClient()
     except (ValueError, Exception) as e:
         return f"Discord not configured: {e}"

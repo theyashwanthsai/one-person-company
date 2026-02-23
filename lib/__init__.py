@@ -11,6 +11,7 @@ _EXPORT_MAP = {
     "get_agent_db": "lib.agents",
     "update_agent_state": "lib.agents",
     "update_agent_location": "lib.agents",
+    "load_agent_skill": "lib.agents",
     "load_agent_prompt": "lib.agents",
     "load_agent_reference": "lib.agents",
     "get_all_agents": "lib.agents",

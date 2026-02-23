@@ -23,9 +23,7 @@ Each agent is a folder under `agents/`:
 agents/
 ├── strategist_lead/
 │   ├── soul.md              # Personality + instructions (required)
-│   ├── tools/               # Agent-specific tools
-│   ├── references/          # Knowledge base
-│   └── prompts/             # Session-specific prompts
+│   └── skills/              # Session/task-specific skills
 ```
 
 ## Adding a New Agent
@@ -35,4 +33,3 @@ agents/
 3. Run `python scripts/register_agents.py`
 
 Done! The agent is now ready to work.
-

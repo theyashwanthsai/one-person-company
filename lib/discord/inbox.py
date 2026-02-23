@@ -117,7 +117,7 @@ def get_recent_chat_context(channel_id: Optional[str], limit: int = RECENT_CHAT_
     if not channel_id:
         return ""
     try:
-        from lib.discord_client import DiscordClient
+        from lib.discord.client import DiscordClient
 
         client = DiscordClient()
     except Exception:
@@ -227,7 +227,7 @@ def poll_discord_for_all_agents(
     This runs in a background thread every minute.
     """
     try:
-        from lib.discord_client import DiscordClient
+        from lib.discord.client import DiscordClient
 
         client = DiscordClient()
     except Exception:
@@ -308,7 +308,7 @@ def start_discord_poller(get_all_agents_fn: Callable[[], List[dict]]):
     def _loop():
         poll_seconds = get_discord_poll_seconds()
         try:
-            from lib.discord_client import DiscordClient
+            from lib.discord.client import DiscordClient
 
             client = DiscordClient()
             prime_discord_cursor_if_needed(client)

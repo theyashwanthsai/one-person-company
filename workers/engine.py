@@ -26,7 +26,7 @@ load_dotenv()
 from lib.tool_runner import run_agent_with_tools, run_agent_step
 from lib.sessions import create_session, append_turn, complete_session
 from lib.agents import load_agent_full, update_agent, get_all_agents
-from lib import discord_inbox
+from lib.discord import inbox as discord_inbox
 from lib.schedule_loader import load_schedule_from_markdown
 
 

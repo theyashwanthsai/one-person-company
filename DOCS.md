@@ -59,9 +59,7 @@ python scripts/ingest_website.py      # Website articles
 
 **Agent Structure:** Each agent is a skill folder (`agents/<agent_id>/`) with:
 - `soul.md` - Personality + instructions (required)
-- `tools/` - Agent-specific scripts
-- `references/` - Knowledge base
-- `prompts/` - Session prompts
+- `skills/` - Session/task-specific skills
 
 ---
 
@@ -237,7 +235,7 @@ complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 - **Content Pipeline** - Idea → Approved → Draft → Post lifecycle
 
 ### ✅ Agent Tool System
-- **Tool Registry** — Auto-discovers tools from `tools/` and `agents/<id>/tools/`
+- **Tool Registry** — Auto-discovers tools from `tools/`
 - **Tool Runner** — LLM ↔ tool execution loop with retries
 - **12 Shared Tools** — learnings, memories, sessions, content pipeline, external integrations
 
@@ -383,9 +381,8 @@ Each tool is a Python file with two things:
 - `SCHEMA` — OpenAI function calling format (dict)
 - `execute(agent_id, **kwargs)` — runs the tool, returns string result
 
-Tools live in two places:
+Tools live in one place:
 - `tools/` — shared tools available to all agents
-- `agents/<agent_id>/tools/` — agent-specific tools (override shared ones)
 
 ### Available Tools
 
@@ -425,7 +422,7 @@ response, tool_calls = await run_agent_step(
 
 ### Adding a New Tool
 
-Create a Python file in `tools/` (shared) or `agents/<agent_id>/tools/` (agent-specific):
+Create a Python file in `tools/`:
 
 ```python
 # tools/my_tool.py
@@ -463,7 +460,7 @@ python3 tests/test_tools.py
 
 `workers/engine.py` orchestrates execution. Schedule data and Discord inbox logic are now split out:
 - Schedule file: `workers/schedule.md`
-- Discord inbox runtime: `lib/discord_inbox.py`
+- Discord inbox runtime: `lib/discord/inbox.py`
 
 ### How It Works
 

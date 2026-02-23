@@ -90,7 +90,7 @@ class TestSessionInteractions(unittest.TestCase):
 class TestDiscordChatting(unittest.TestCase):
     def setUp(self):
         self.engine = fresh_import("workers.engine")
-        self.discord_module = fresh_import("lib.discord_client")
+        self.discord_module = fresh_import("lib.discord.client")
 
     def test_poll_discord_routes_message_to_target_agent(self):
         module = self.engine
@@ -114,7 +114,7 @@ class TestDiscordChatting(unittest.TestCase):
             }
         ]
 
-        with patch("lib.discord_client.DiscordClient", return_value=fake_client), patch.object(
+        with patch("lib.discord.client.DiscordClient", return_value=fake_client), patch.object(
             module, "get_all_agents", return_value=agents
         ), patch.object(module, "queue_inbox_message") as queue_inbox, patch.object(
             module, "trigger_inbox_request_if_idle"

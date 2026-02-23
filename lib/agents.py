@@ -104,21 +104,22 @@ def update_agent(agent_id: str, state: str = None, current_location: str = None)
         supabase.table("agents").update(data).eq("id", agent_id).execute()
 
 
-def load_agent_prompt(agent_id: str, prompt_name: str) -> Optional[str]:
+def load_agent_skill(agent_id: str, skill_name: str) -> Optional[str]:
     agent_folder = AGENTS_DIR / agent_id
-    prompt_file = agent_folder / "prompts" / f"{prompt_name}.md"
+    skill_file = agent_folder / "skills" / f"{skill_name}.md"
     
-    if prompt_file.exists():
-        return prompt_file.read_text()
+    if skill_file.exists():
+        return skill_file.read_text()
     return None
 
 
+def load_agent_prompt(agent_id: str, prompt_name: str) -> Optional[str]:
+    """Backward-compatible alias. Prompts are now stored under skills/."""
+    return load_agent_skill(agent_id, prompt_name)
+
+
 def load_agent_reference(agent_id: str, reference_name: str) -> Optional[str]:
-    agent_folder = AGENTS_DIR / agent_id
-    ref_file = agent_folder / "references" / f"{reference_name}.md"
-    
-    if ref_file.exists():
-        return ref_file.read_text()
+    """Deprecated compatibility helper. Agent-level references are removed."""
     return None
 
 
@@ -139,4 +140,3 @@ def get_all_agents() -> List[dict]:
             })
     
     return agents
-
