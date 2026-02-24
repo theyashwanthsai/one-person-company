@@ -363,10 +363,8 @@ This will:
 5. Add to `.env`
 
 **Reddit API:**
-1. Go to https://www.reddit.com/prefs/apps
-2. Create an app (script type)
-3. Get client ID (under app name) and secret
-4. Add to `.env`
+- No API key is required for `surf_reddit.py` in the current implementation.
+- It uses Reddit's public `/r/<subreddit>/<sort>.json` endpoints with a custom user agent.
 
 **Hacker News:**
 - No API key needed! Works out of the box.
