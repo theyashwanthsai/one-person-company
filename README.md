@@ -112,7 +112,8 @@ one_person_company/
 ├── agents/             # Agent folders (soul.md + skills)
 │   ├── strategist_lead/
 │   ├── creator_lead/
-│   └── analyst_lead/
+│   ├── analyst_lead/
+│   └── watari/
 └── scripts/            # Utility scripts
 ```
 

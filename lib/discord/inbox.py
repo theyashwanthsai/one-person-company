@@ -191,7 +191,7 @@ def resolve_message_targets(message_body: str, agents: List[dict]) -> List[str]:
     if matched:
         return matched
 
-    configured_default = os.getenv("DISCORD_DEFAULT_AGENT_ID", "strategist_lead")
+    configured_default = os.getenv("DISCORD_DEFAULT_AGENT_ID", "watari")
     if configured_default in agent_ids:
         return [configured_default]
     return [agent_ids[0]]

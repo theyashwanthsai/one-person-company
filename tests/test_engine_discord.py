@@ -71,6 +71,7 @@ class TestSessionInteractions(unittest.TestCase):
             {"id": "strategist_lead", "name": "Thea"},
             {"id": "creator_lead", "name": "Kavi"},
             {"id": "analyst_lead", "name": "Dara"},
+            {"id": "watari", "name": "Watari"},
         ]
 
         self.assertEqual(
@@ -83,7 +84,7 @@ class TestSessionInteractions(unittest.TestCase):
         )
         self.assertEqual(
             module.resolve_message_targets("Quick update with no direct mention", agents),
-            ["strategist_lead"],
+            ["watari"],
         )
 
 

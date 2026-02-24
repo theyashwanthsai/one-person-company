@@ -126,6 +126,7 @@ standup_skill = load_agent_skill('strategist_lead', 'standup')
 | **strategist_lead** | Thea | Strategist | Trends, themes, long-term narrative |
 | **creator_lead** | Kavi | Creator | Hooks, threads, content execution |
 | **analyst_lead** | Dara | Analyst | Metrics, benchmarks, data-driven insights |
+| **watari** | Watari | Personal Assistant | Brainstorming + markdown knowledge base curation |
 
 ## Future Agents (Examples)
 
