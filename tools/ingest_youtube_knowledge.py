@@ -9,22 +9,9 @@ from typing import Iterable, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 import requests
-import youtube_transcript_api as yta
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from lib.knowledge_base import write_markdown_note
-
-
-_TRANSCRIPT_EXCEPTIONS = tuple(
-    exc
-    for exc in (
-        getattr(yta, "NoTranscriptAvailable", None),
-        getattr(yta, "NoTranscriptFound", None),
-        getattr(yta, "TranscriptsDisabled", None),
-        getattr(yta, "CouldNotRetrieveTranscript", None),
-    )
-    if isinstance(exc, type) and issubclass(exc, Exception)
-) or (Exception,)
 
 
 SCHEMA = {
@@ -59,31 +46,14 @@ SCHEMA = {
 }
 
 
-def _extract_video_id(url: str) -> Optional[str]:
-    """Extract video ID from common YouTube URL formats."""
-    print(f"Extracting video ID from URL: {url}")
-    
+def _extract_video_id(url):
+    """Extract video ID from various YouTube URL formats."""
     if "youtu.be" in url:
-        video_id = url.split("youtu.be/")[1].split("?")[0]
-        print(f"Extracted video ID from youtu.be format: {video_id}")
-        return video_id
-
+        return url.split("youtu.be/")[1].split("?")[0]
     parsed = urlparse(url)
     if "youtube.com" in parsed.netloc:
-        video_id = parse_qs(parsed.query).get("v", [None])[0]
-        if video_id:
-            print(f"Extracted video ID from youtube.com query param: {video_id}")
-            return video_id
-        # Keep support for /shorts/<id> and /embed/<id> URLs.
-        match = re.search(r"/(shorts|embed)/([a-zA-Z0-9_-]{6,})", parsed.path)
-        if match:
-            video_id = match.group(2)
-            print(f"Extracted video ID from {match.group(1)} format: {video_id}")
-            return video_id
-    
-    print("Could not extract video ID from URL")
+        return parse_qs(parsed.query).get("v", [None])[0]
     return None
-
 
 def _fetch_title(url: str, video_id: str) -> str:
     print(f"Fetching title for video ID: {video_id}")
@@ -110,139 +80,19 @@ def _fetch_title(url: str, video_id: str) -> str:
     return fallback_title
 
 
-def _language_candidates(language: str) -> List[str]:
-    base = (language or "en").strip() or "en"
-    candidates = [base]
-    if base.lower() != "en":
-        candidates.extend(["en", "en-US", "en-GB"])
-    else:
-        candidates.extend(["en-US", "en-GB"])
-    # preserve order and remove duplicates
-    seen = set()
-    ordered = []
-    for lang in candidates:
-        key = lang.lower()
-        if key not in seen:
-            seen.add(key)
-            ordered.append(lang)
-    
-    print(f"Language candidates for '{language}': {ordered}")
-    return ordered
-
-
 def _fetch_transcript(url: str, language: str = "en"):
-    """Fetch transcript across youtube_transcript_api versions with fallbacks."""
-    print(f"Fetching transcript for URL: {url}, language: {language}")
-
+    """Fetch transcript for a YouTube video."""
     video_id = _extract_video_id(url)
+
     if not video_id:
         raise ValueError("Could not extract video ID from URL.")
 
-    languages = _language_candidates(language)
+    print(f"Fetching transcript for video ID: {video_id}\n")
+
     ytt_api = YouTubeTranscriptApi()
+    fetched = ytt_api.fetch(video_id, languages=[language])
 
-    # Attempt A: instance-level v1.0+ API (preferred)
-    print("Attempting instance-level fetch() API (v1.0+)...")
-    if hasattr(ytt_api, "fetch"):
-        try:
-            lines = list(ytt_api.fetch(video_id, languages=languages))
-            print(f"Successfully fetched transcript using instance.fetch(), {len(lines)} entries")
-            return video_id, lines
-        except _TRANSCRIPT_EXCEPTIONS as e:
-            print(f"instance.fetch() failed with transcript error: {e}")
-        except Exception as e:
-            print(f"instance.fetch() failed unexpectedly: {e}")
-
-    # Attempt B: class-level v0 static API
-    print("Attempting class-level get_transcript() API (v0)...")
-    if hasattr(YouTubeTranscriptApi, "get_transcript"):
-        try:
-            lines = list(YouTubeTranscriptApi.get_transcript(video_id, languages=languages))
-            print(f"Successfully fetched transcript using class-level API, {len(lines)} entries")
-            return video_id, lines
-        except _TRANSCRIPT_EXCEPTIONS as e:
-            print(f"Class-level get_transcript() failed: {e}")
-        except Exception as e:
-            print(f"Class-level get_transcript() failed unexpectedly: {e}")
-
-    # Attempt C: transcript-list fallback (manual → generated → any → translatable)
-    # NOTE: Do NOT call list(transcript_list) before find_* methods — it exhausts the iterator.
-    print("Attempting transcript-list fallback...")
-    try:
-        transcript = None
-
-        # 1. Try preferred languages directly
-        print("Trying find_transcript() in preferred languages...")
-        try:
-            transcript_list = ytt_api.list_transcripts(video_id)
-            transcript = transcript_list.find_transcript(languages)
-            print(f"Found transcript via find_transcript(): {transcript.language_code}")
-        except Exception as e:
-            print(f"find_transcript() failed: {e}")
-
-        # 2. Try manually-created transcripts
-        if transcript is None:
-            print("Trying find_manually_created_transcript()...")
-            try:
-                transcript_list = ytt_api.list_transcripts(video_id)
-                transcript = transcript_list.find_manually_created_transcript(languages)
-                print(f"Found manually created transcript: {transcript.language_code}")
-            except Exception as e:
-                print(f"find_manually_created_transcript() failed: {e}")
-
-        # 3. Try auto-generated transcripts
-        if transcript is None:
-            print("Trying find_generated_transcript()...")
-            try:
-                transcript_list = ytt_api.list_transcripts(video_id)
-                transcript = transcript_list.find_generated_transcript(languages)
-                print(f"Found generated transcript: {transcript.language_code}")
-            except Exception as e:
-                print(f"find_generated_transcript() failed: {e}")
-
-        # 4. Accept any available transcript (first one wins)
-        if transcript is None:
-            print("Trying any available transcript...")
-            try:
-                transcript_list = ytt_api.list_transcripts(video_id)
-                for t in transcript_list:
-                    transcript = t
-                    print(f"Using first available transcript: {t.language_code}")
-                    break
-            except Exception as e:
-                print(f"Could not iterate transcript list: {e}")
-
-        # 5. Translate as a last resort
-        if transcript is None:
-            print("No direct transcript found; trying translatable fallback...")
-            try:
-                transcript_list = ytt_api.list_transcripts(video_id)
-                for t in transcript_list:
-                    if getattr(t, "is_translatable", False):
-                        try:
-                            transcript = t.translate(languages[0])
-                            print(f"Translated transcript to {languages[0]}")
-                            break
-                        except Exception as te:
-                            print(f"Translation failed: {te}")
-            except Exception as e:
-                print(f"Translatable fallback failed: {e}")
-
-        if transcript is None:
-            raise RuntimeError("No matching or translatable transcript was found.")
-
-        lines = list(transcript.fetch())
-        print(f"Successfully fetched transcript via list fallback, {len(lines)} entries")
-        return video_id, lines
-
-    except RuntimeError:
-        raise
-    except Exception as exc:
-        print(f"All transcript fetch attempts failed: {exc}")
-        raise RuntimeError(
-            f"No usable transcript found for video_id={video_id} "
-            f"(requested={languages}). Root cause: {exc}"
-        ) from exc
+    return video_id, fetched 
 
 def _format_transcript(lines: Iterable[object], include_timestamps: bool = True) -> str:
     print(f"Formatting transcript with timestamps: {include_timestamps}")
