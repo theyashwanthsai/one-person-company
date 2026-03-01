@@ -393,6 +393,7 @@ Tools live in one place:
 **Communication:**
 - `request_1on1` — Request conversation with another agent
 - `discord_ceo` — Send Discord message to CEO (escalations, questions)
+- `email_ops` — Check inbox updates or send an email
 
 **External Ingestion:**
 - `surf_reddit` — Surf Reddit posts via public JSON endpoints
@@ -516,6 +517,17 @@ Add one entry to the list in `workers/schedule.md`:
     "agent": "creator_lead",
     "session_type": "review",
     "task": "Review all drafts from today. Polish the best one."
+}
+```
+
+You can also run recurring tasks by specifying an interval:
+
+```python
+{
+    "interval_minutes": 30, "type": "solo",
+    "agent": "watari",
+    "session_type": "email_check",
+    "task": "Check email inbox and post updates to #mails."
 }
 ```
 

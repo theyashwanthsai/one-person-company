@@ -172,6 +172,19 @@ class DiscordClient:
             token,
             json_body=payload,
         )
+        if (
+            result is None
+            and agent_id
+            and self.default_bot_token
+            and token != self.default_bot_token
+        ):
+            # If a per-agent token is stale or lacks channel permission, fall back to default bot.
+            result = self._request(
+                "POST",
+                f"/channels/{channel_id}/messages",
+                self.default_bot_token,
+                json_body=payload,
+            )
         return result is not None
 
     def get_latest_message_id(self, channel_id: str, token_agent_id: Optional[str] = None) -> Optional[str]:

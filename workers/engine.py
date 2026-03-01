@@ -349,7 +349,8 @@ def start():
     start_discord_poller()
 
     for entry in schedule_entries:
-        t = entry["time"]
+        t = entry.get("time")
+        interval_minutes = entry.get("interval_minutes")
         stype = entry.get("session_type", "?")
 
         if entry["type"] == "solo":
@@ -361,11 +362,16 @@ def start():
             else:
                 label = f"{agents} → {stype}"
 
-        schedule.every().day.at(t).do(
-            lambda e=entry: asyncio.run(run_task(e))
-        )
-
-        print(f"  {t}  {label}")
+        if interval_minutes:
+            schedule.every(interval_minutes).minutes.do(
+                lambda e=entry: asyncio.run(run_task(e))
+            )
+            print(f"  every {interval_minutes}m  {label}")
+        else:
+            schedule.every().day.at(t).do(
+                lambda e=entry: asyncio.run(run_task(e))
+            )
+            print(f"  {t}  {label}")
 
     print(f"\n⏳ Engine running. Ctrl+C to stop.\n")
 
@@ -414,15 +420,21 @@ if __name__ == '__main__':
     if args.list:
         print("\n📅 Daily Schedule:\n")
         for entry in get_schedule():
-            t = entry["time"]
+            t = entry.get("time")
+            interval_minutes = entry.get("interval_minutes")
             stype = entry.get("session_type", "?")
             etype = entry["type"]
             if etype == "solo":
-                print(f"  {t}  [{etype}]  {entry['agent']} → {stype}")
+                label = f"{entry['agent']} → {stype}"
             else:
                 agents = entry["agents"]
-                label = ', '.join(agents) if isinstance(agents, list) else agents
-                print(f"  {t}  [{etype}]  {label} → {stype}")
+                agent_list = ', '.join(agents) if isinstance(agents, list) else agents
+                label = f"{agent_list} → {stype}"
+
+            if interval_minutes:
+                print(f"  every {interval_minutes}m  [{etype}]  {label}")
+            else:
+                print(f"  {t}  [{etype}]  {label}")
         print()
 
     elif args.run:

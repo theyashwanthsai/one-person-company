@@ -4,6 +4,14 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
 
 ```python
 [
+    # ---- Inbox: Email Updates ----
+    {
+        "interval_minutes": 30, "type": "solo",
+        "agent": "watari",
+        "session_type": "email_check",
+        "task": "Check email inbox using email_ops (action='check') and post any new updates to Discord #mails. If there are no new emails, keep it brief."
+    },
+
     # ---- Morning: Signal Gathering ----
     {
         "time": "08:00", "type": "solo",

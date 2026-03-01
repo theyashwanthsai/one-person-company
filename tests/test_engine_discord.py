@@ -80,12 +80,53 @@ class TestSessionInteractions(unittest.TestCase):
         )
         self.assertEqual(
             module.resolve_message_targets("Team, everyone review this", agents),
-            ["strategist_lead", "creator_lead", "analyst_lead"],
+            ["strategist_lead", "creator_lead", "analyst_lead", "watari"],
         )
         self.assertEqual(
             module.resolve_message_targets("Quick update with no direct mention", agents),
             ["watari"],
         )
+        self.assertEqual(
+            module.resolve_message_targets("Please post standup updates in #standup", agents),
+            ["strategist_lead", "creator_lead", "analyst_lead", "watari"],
+        )
+
+    def test_resolve_message_targets_discord_mentions(self):
+        module = self.engine
+        agents = [
+            {"id": "strategist_lead", "name": "Thea"},
+            {"id": "creator_lead", "name": "Kavi"},
+            {"id": "analyst_lead", "name": "Dara"},
+        ]
+
+        with patch.dict(
+            os.environ,
+            {
+                "DISCORD_STRATEGIST_LEAD_USER_ID": "111",
+                "DISCORD_CREATOR_LEAD_USER_ID": "222",
+                "DISCORD_ANALYST_LEAD_USER_ID": "333",
+            },
+            clear=False,
+        ):
+            self.assertEqual(
+                module.resolve_message_targets("<@222> can you handle this?", agents),
+                ["creator_lead"],
+            )
+
+    def test_build_inbox_request_task_includes_required_reply_channel(self):
+        module = self.engine
+        with patch.object(module.discord_inbox, "get_recent_chat_context", return_value=""):
+            task = module.build_inbox_request_task(
+                "strategist_lead",
+                {
+                    "from": "@ceo",
+                    "subject": "Discord message",
+                    "body": "post your standup",
+                    "channel_id": "standup-123",
+                    "reply_channel": "standup",
+                },
+            )
+        self.assertIn("Required reply channel: standup", task)
 
 
 class TestDiscordChatting(unittest.TestCase):
@@ -105,6 +146,7 @@ class TestDiscordChatting(unittest.TestCase):
 
         fake_client = MagicMock()
         fake_client.general_channel_id = "general-123"
+        fake_client.standup_channel_id = None
         fake_client.get_recent_user_messages.return_value = [
             {
                 "id": "9001",
@@ -128,6 +170,50 @@ class TestDiscordChatting(unittest.TestCase):
         queued_agent = queue_inbox.call_args_list[0].args[0]
         self.assertEqual(queued_agent, "strategist_lead")
         self.assertEqual(module.LAST_SEEN_DISCORD_MESSAGE_ID["general"], "9001")
+        trigger_idle.assert_called_once_with("strategist_lead")
+
+    def test_poll_discord_reads_standup_channel_and_routes_to_all(self):
+        module = self.engine
+        module.LAST_SEEN_DISCORD_MESSAGE_ID.clear()
+
+        agents = [
+            {"id": "strategist_lead", "name": "Thea"},
+            {"id": "creator_lead", "name": "Kavi"},
+            {"id": "analyst_lead", "name": "Dara"},
+        ]
+
+        fake_client = MagicMock()
+        fake_client.general_channel_id = "general-123"
+        fake_client.standup_channel_id = "standup-123"
+
+        def _messages(channel_id, **kwargs):
+            if channel_id == "standup-123":
+                return [
+                    {
+                        "id": "9100",
+                        "from": "@ceo",
+                        "subject": "Discord message",
+                        "body": "standup updates please",
+                        "channel_id": "standup-123",
+                    }
+                ]
+            return []
+
+        fake_client.get_recent_user_messages.side_effect = _messages
+
+        with patch("lib.discord.client.DiscordClient", return_value=fake_client), patch.object(
+            module, "get_all_agents", return_value=agents
+        ), patch.object(module, "queue_inbox_message") as queue_inbox, patch.object(
+            module, "trigger_inbox_request_if_idle"
+        ) as trigger_idle, patch.object(
+            module, "get_agent_busy", return_value=False
+        ):
+            module.poll_discord_for_all_agents()
+
+        self.assertEqual(queue_inbox.call_count, 3)
+        queued_agents = [call.args[0] for call in queue_inbox.call_args_list]
+        self.assertCountEqual(queued_agents, ["strategist_lead", "creator_lead", "analyst_lead"])
+        self.assertEqual(module.LAST_SEEN_DISCORD_MESSAGE_ID["standup"], "9100")
         self.assertEqual(trigger_idle.call_count, 3)
 
     def test_discord_client_sends_standup_to_standup_channel(self):
@@ -230,12 +316,18 @@ class TestDiscordChatting(unittest.TestCase):
 
         fake_client = MagicMock()
         fake_client.general_channel_id = "general-123"
-        fake_client.get_latest_message_id.return_value = "7777"
+        fake_client.standup_channel_id = "standup-123"
+
+        def _latest(channel_id, **kwargs):
+            return {"general-123": "7777", "standup-123": "8888"}.get(channel_id)
+
+        fake_client.get_latest_message_id.side_effect = _latest
 
         with patch.dict(os.environ, {"DISCORD_PROCESS_EXISTING_ON_START": "0"}, clear=False):
             module.prime_discord_cursor_if_needed(fake_client)
 
         self.assertEqual(module.LAST_SEEN_DISCORD_MESSAGE_ID.get("general"), "7777")
+        self.assertEqual(module.LAST_SEEN_DISCORD_MESSAGE_ID.get("standup"), "8888")
 
     def test_prime_discord_cursor_skips_when_replay_enabled(self):
         module = self.engine

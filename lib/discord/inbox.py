@@ -3,7 +3,7 @@ import re
 import time
 import asyncio
 import threading
-from typing import Awaitable, Callable, Dict, List, Optional
+from typing import Awaitable, Callable, Dict, List, Optional, Set
 
 
 INBOX_QUEUE: Dict[str, List[dict]] = {}
@@ -82,6 +82,7 @@ def build_inbox_request_task(agent_id: str, message: dict) -> str:
     sender = message.get("from", "unknown")
     subject = message.get("subject", "(no subject)")
     body = (message.get("body", "") or "").strip()
+    reply_channel = message.get("reply_channel") or "auto"
     recent_chat = get_recent_chat_context(message.get("channel_id"), RECENT_CHAT_CONTEXT_LIMIT)
     return (
         "You received a direct Discord request from the CEO. "
@@ -91,6 +92,8 @@ def build_inbox_request_task(agent_id: str, message: dict) -> str:
         "Do not include subject lines, urgency labels, signatures, or metadata.\n\n"
         f"Agent: {agent_id}\n"
         f"From: {sender}\n"
+        f"Required reply channel: {reply_channel}\n"
+        "When you call discord_ceo, set channel to this required reply channel.\n"
         f"Subject: {subject}\n"
         f"Message:\n{body}\n\n"
         f"{recent_chat}"
@@ -171,7 +174,42 @@ def _message_targets_agent(message_body: str, agent: dict) -> bool:
     return False
 
 
-def resolve_message_targets(message_body: str, agents: List[dict]) -> List[str]:
+def _agent_discord_user_id(agent: dict) -> str:
+    agent_id = (agent.get("id") or "").strip()
+    if not agent_id:
+        return ""
+    normalized = re.sub(r"[^A-Z0-9]", "_", agent_id.upper())
+    return (os.getenv(f"DISCORD_{normalized}_USER_ID") or "").strip()
+
+
+def _resolve_targets_from_discord_mentions(message_body: str, agents: List[dict]) -> List[str]:
+    mention_ids = {
+        mention.strip()
+        for mention in re.findall(r"<@!?(\d+)>", message_body or "")
+        if mention.strip()
+    }
+    if not mention_ids:
+        return []
+    matched = []
+    for agent in agents:
+        discord_user_id = _agent_discord_user_id(agent)
+        if discord_user_id and discord_user_id in mention_ids:
+            matched.append(agent["id"])
+    return matched
+
+
+def _is_standup_request(message_body: str) -> bool:
+    text = (message_body or "").lower()
+    return bool(re.search(r"\bstandup\b", text))
+
+
+def _requested_reply_channel(message_body: str, source_channel: str) -> str:
+    if source_channel == "standup" or _is_standup_request(message_body):
+        return "standup"
+    return "general"
+
+
+def resolve_message_targets(message_body: str, agents: List[dict], source_channel: str = "general") -> List[str]:
     """
     Route a CEO message from #general to target agent(s).
     Rules:
@@ -184,17 +222,68 @@ def resolve_message_targets(message_body: str, agents: List[dict]) -> List[str]:
     if not agent_ids:
         return []
 
+    matched_mentions = _resolve_targets_from_discord_mentions(message_body, agents)
+    if matched_mentions:
+        return matched_mentions
+
     if re.search(r"\b(all|everyone|team)\b", text) or "@everyone" in text:
+        return agent_ids
+
+    if _is_standup_request(message_body):
         return agent_ids
 
     matched = [a["id"] for a in agents if _message_targets_agent(text, a)]
     if matched:
         return matched
 
+    if source_channel == "standup":
+        return agent_ids
+
     configured_default = os.getenv("DISCORD_DEFAULT_AGENT_ID", "watari")
     if configured_default in agent_ids:
         return [configured_default]
     return [agent_ids[0]]
+
+
+def _poll_channel(
+    client,
+    all_agents: List[dict],
+    channel_id: str,
+    channel_key: str,
+    queue_fn: Callable[[str, dict], None],
+    busy_fn: Callable[[str], bool],
+):
+    with LAST_SEEN_LOCK:
+        last_seen = LAST_SEEN_DISCORD_MESSAGE_ID.get(channel_key)
+
+    messages = client.get_recent_user_messages(
+        channel_id=channel_id,
+        token_agent_id=None,
+        since_message_id=last_seen,
+        limit=50,
+    )
+    if not messages:
+        return set()
+
+    triggered_agent_ids: Set[str] = set()
+    for message in messages:
+        body = message.get("body", "")
+        targets = resolve_message_targets(body, all_agents, source_channel=channel_key)
+        reply_channel = _requested_reply_channel(body, source_channel=channel_key)
+        for agent_id in targets:
+            payload = dict(message)
+            payload["reply_channel"] = reply_channel
+            queue_fn(agent_id, payload)
+            triggered_agent_ids.add(agent_id)
+            if busy_fn(agent_id):
+                send_busy_ack(client, agent_id, payload)
+
+    newest_id = messages[-1].get("id")
+    if newest_id:
+        with LAST_SEEN_LOCK:
+            LAST_SEEN_DISCORD_MESSAGE_ID[channel_key] = newest_id
+
+    return triggered_agent_ids
 
 
 def trigger_inbox_request_if_idle(agent_id: str):
@@ -238,42 +327,33 @@ def poll_discord_for_all_agents(
     except Exception:
         return
 
-    general_channel_id = client.general_channel_id
-    if not general_channel_id:
-        return
-
-    with LAST_SEEN_LOCK:
-        last_seen = LAST_SEEN_DISCORD_MESSAGE_ID.get("general")
-
-    messages = client.get_recent_user_messages(
-        channel_id=general_channel_id,
-        token_agent_id=None,
-        since_message_id=last_seen,
-        limit=50,
-    )
-    if not messages:
+    general_channel_id = (client.general_channel_id or "").strip()
+    standup_channel_id = (client.standup_channel_id or "").strip()
+    channels: List[tuple[str, str]] = []
+    if general_channel_id:
+        channels.append(("general", general_channel_id))
+    if standup_channel_id and standup_channel_id != general_channel_id:
+        channels.append(("standup", standup_channel_id))
+    if not channels:
         return
 
     queue_fn = queue_message_fn or queue_inbox_message
     busy_fn = get_busy_fn or get_agent_busy
     trigger_fn = trigger_if_idle_fn or trigger_inbox_request_if_idle
 
-    for message in messages:
-        targets = resolve_message_targets(message.get("body", ""), all_agents)
-        for agent_id in targets:
-            queue_fn(agent_id, message)
-            if busy_fn(agent_id):
-                send_busy_ack(client, agent_id, message)
+    triggered_agents: Set[str] = set()
+    for channel_key, channel_id in channels:
+        triggered_agents |= _poll_channel(
+            client=client,
+            all_agents=all_agents,
+            channel_id=channel_id,
+            channel_key=channel_key,
+            queue_fn=queue_fn,
+            busy_fn=busy_fn,
+        )
 
-    newest_id = messages[-1].get("id")
-    if newest_id:
-        with LAST_SEEN_LOCK:
-            LAST_SEEN_DISCORD_MESSAGE_ID["general"] = newest_id
-
-    for agent in all_agents:
-        agent_id = agent.get("id")
-        if agent_id:
-            trigger_fn(agent_id)
+    for agent_id in triggered_agents:
+        trigger_fn(agent_id)
 
 
 def prime_discord_cursor_if_needed(client):
@@ -283,23 +363,31 @@ def prime_discord_cursor_if_needed(client):
     if should_process_existing_messages_on_start():
         return
 
-    general_channel_id = client.general_channel_id
-    if not general_channel_id:
-        return
+    general_channel_id = (client.general_channel_id or "").strip()
+    standup_channel_id = (client.standup_channel_id or "").strip()
+    channels: List[tuple[str, str]] = []
+    if general_channel_id:
+        channels.append(("general", general_channel_id))
+    if standup_channel_id and standup_channel_id != general_channel_id:
+        channels.append(("standup", standup_channel_id))
 
-    with LAST_SEEN_LOCK:
-        already = LAST_SEEN_DISCORD_MESSAGE_ID.get("general")
-    if already:
-        return
-
-    latest_id = client.get_latest_message_id(
-        channel_id=general_channel_id,
-        token_agent_id=None,
-    )
-    if latest_id:
+    for channel_key, channel_id in channels:
         with LAST_SEEN_LOCK:
-            LAST_SEEN_DISCORD_MESSAGE_ID["general"] = latest_id
-        print("  ℹ️ Primed Discord cursor at latest general-channel message (startup replay disabled).")
+            already = LAST_SEEN_DISCORD_MESSAGE_ID.get(channel_key)
+        if already:
+            continue
+
+        latest_id = client.get_latest_message_id(
+            channel_id=channel_id,
+            token_agent_id=None,
+        )
+        if latest_id:
+            with LAST_SEEN_LOCK:
+                LAST_SEEN_DISCORD_MESSAGE_ID[channel_key] = latest_id
+            print(
+                f"  ℹ️ Primed Discord cursor at latest {channel_key}-channel message "
+                "(startup replay disabled)."
+            )
 
 
 def start_discord_poller(get_all_agents_fn: Callable[[], List[dict]]):
