@@ -96,10 +96,11 @@ def build_inbox_request_task(agent_id: str, message: dict) -> str:
         "NEVER say 'I will do it' or 'I'm working on it' — there is no later. "
         "Your discord_ceo message IS the deliverable. "
         "Use tools first to gather data if needed, then deliver the finished output.\n\n"
+        f"MANDATORY: When you call discord_ceo, you MUST set channel='{reply_channel}'. "
+        f"Do NOT use channel='auto' or channel='general'. "
+        f"The ONLY correct channel value is '{reply_channel}'.\n\n"
         f"Agent: {agent_id}\n"
         f"From: {sender}\n"
-        f"Required reply channel: {reply_channel}\n"
-        "When you call discord_ceo, set channel to this required reply channel.\n"
         f"Subject: {subject}\n"
         f"Message:\n{body}\n\n"
         f"{recent_chat}"
@@ -225,13 +226,32 @@ def _requested_reply_channel(message_body: str, source_channel: str) -> str:
     return "general"
 
 
+def _is_broadcast_intent(text: str) -> bool:
+    """Check if the message is intentionally addressing all agents (not casual use of 'all')."""
+    text = (text or "").lower()
+    if "@everyone" in text:
+        return True
+    if re.search(r"\beveryone\b", text):
+        return True
+    if re.search(r"\bteam\b", text):
+        return True
+    if re.search(r"(hey|tell|ask|to|notify|@)\s*\ball\b", text):
+        return True
+    if re.search(r"\ball\s*(agents?|of you)\b", text):
+        return True
+    return False
+
+
 def resolve_message_targets(message_body: str, agents: List[dict], source_channel: str = "general") -> List[str]:
     """
     Route a CEO message to target agent(s).
     Rules:
-    - Contains 'all'/'everyone'/'team' => all agents
-    - Discord @mention or agent name => matching agents
-    - Channel-specific default (e.g. #content → Kavi, #mails → Watari)
+    - Channels with a designated agent (#content, #mails) → that agent only
+      (unless a specific @mention overrides)
+    - @mentions => matching agents
+    - Broadcast intent ('everyone', 'hey all', 'team') => all agents
+    - Agent name in text => matching agents
+    - Standup channel => all agents
     - No explicit target => env default agent
     """
     text = (message_body or "").lower()
@@ -239,11 +259,18 @@ def resolve_message_targets(message_body: str, agents: List[dict], source_channe
     if not agent_ids:
         return []
 
+    channel_default = CHANNEL_DEFAULT_AGENTS.get(source_channel)
+
     matched_mentions = _resolve_targets_from_discord_mentions(message_body, agents)
     if matched_mentions:
         return matched_mentions
 
-    if re.search(r"\b(all|everyone|team)\b", text) or "@everyone" in text:
+    if channel_default:
+        if channel_default in agent_ids:
+            return [channel_default]
+        return [agent_ids[0]]
+
+    if _is_broadcast_intent(text):
         return agent_ids
 
     if _is_standup_request(message_body):
@@ -255,10 +282,6 @@ def resolve_message_targets(message_body: str, agents: List[dict], source_channe
 
     if source_channel == "standup":
         return agent_ids
-
-    channel_default = CHANNEL_DEFAULT_AGENTS.get(source_channel)
-    if channel_default and channel_default in agent_ids:
-        return [channel_default]
 
     configured_default = os.getenv("DISCORD_DEFAULT_AGENT_ID", "watari")
     if configured_default in agent_ids:
@@ -465,6 +488,7 @@ def get_inbox_context(agent_id: str) -> str:
     if not messages:
         return ""
 
+    reply_channel = messages[-1].get("reply_channel", "general")
     lines = ["Discord directives from CEO (process these before continuing your task):"]
     for idx, message in enumerate(messages, start=1):
         subject = message.get("subject", "").strip() or "(no subject)"
@@ -478,7 +502,8 @@ def get_inbox_context(agent_id: str) -> str:
         "Act on these NOW and deliver the actual output. "
         "If asked for content/summaries/analysis, produce it — don't promise to do it later. "
         "If another agent should handle this, request a 1-on-1 and notify the CEO. "
-        "When you message the CEO, keep it conversational and plain text."
+        "When you message the CEO, keep it conversational and plain text. "
+        f"MANDATORY: set channel='{reply_channel}' when calling discord_ceo."
     )
     recent_channel_id = messages[-1].get("channel_id")
     recent_chat = get_recent_chat_context(recent_channel_id, RECENT_CHAT_CONTEXT_LIMIT)
