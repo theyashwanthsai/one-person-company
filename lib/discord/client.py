@@ -10,6 +10,33 @@ from typing import Dict, List, Optional
 import requests
 
 
+TEXT_ATTACHMENT_EXTENSIONS = {".txt", ".md", ".csv", ".json", ".py", ".js", ".ts", ".html", ".css", ".log"}
+MAX_ATTACHMENT_SIZE_BYTES = 50_000
+
+
+def _download_text_attachments(attachments: List[dict]) -> str:
+    """Download text-file attachments and return their combined content."""
+    parts = []
+    for att in (attachments or []):
+        filename = (att.get("filename") or "").lower()
+        size = att.get("size", 0)
+        url = att.get("url", "")
+        if not url or size > MAX_ATTACHMENT_SIZE_BYTES:
+            continue
+        ext = os.path.splitext(filename)[1]
+        if ext not in TEXT_ATTACHMENT_EXTENSIONS:
+            continue
+        try:
+            resp = requests.get(url, timeout=10)
+            if resp.status_code == 200:
+                text = resp.text.strip()
+                if text:
+                    parts.append(f"[Attached file: {att.get('filename', 'file')}]\n{text}")
+        except Exception:
+            continue
+    return "\n\n".join(parts)
+
+
 def _env_key_for_agent(agent_id: str, suffix: str) -> str:
     normalized = re.sub(r"[^A-Z0-9]", "_", agent_id.upper())
     return f"DISCORD_{normalized}_{suffix}"
@@ -87,6 +114,10 @@ class DiscordClient:
                 continue
 
             body = (item.get("content") or "").strip()
+            attachment_text = _download_text_attachments(item.get("attachments", []))
+            if attachment_text:
+                body = f"{body}\n\n{attachment_text}" if body else attachment_text
+
             if not body:
                 continue
 
@@ -136,6 +167,9 @@ class DiscordClient:
             global_name = author.get("global_name")
             sender = f"{global_name} (@{username})" if global_name else f"@{username}"
             body = (item.get("content") or "").strip()
+            attachment_text = _download_text_attachments(item.get("attachments", []))
+            if attachment_text:
+                body = f"{body}\n\n{attachment_text}" if body else attachment_text
             if not body:
                 continue
             messages.append(

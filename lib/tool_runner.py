@@ -182,7 +182,7 @@ async def run_agent_step(
     """
     High-level: Run one "step" for an agent with their soul and tools.
     
-    Loads the agent's soul.md as system prompt, 
+    Loads the agent's soul.md as system prompt, auto-loads all skills,
     discovers their tools, and runs the tool loop.
     
     Args:
@@ -198,6 +198,10 @@ async def run_agent_step(
     
     agent = load_agent_full(agent_id)
     system_prompt = agent.get("soul_instructions", f"You are {agent_id}.")
+
+    skills_text = _load_all_skills(agent_id)
+    if skills_text:
+        system_prompt = f"{system_prompt}\n\n{skills_text}"
     
     user_prompt = task
     if context:
@@ -212,6 +216,20 @@ async def run_agent_step(
         auto_log_insights=True,
         source_session_id=source_session_id,
     )
+
+
+def _load_all_skills(agent_id: str) -> str:
+    """Load all skill markdown files from agents/<agent_id>/skills/ and combine."""
+    from pathlib import Path
+    skills_dir = Path(__file__).parent.parent / "agents" / agent_id / "skills"
+    if not skills_dir.is_dir():
+        return ""
+    parts = []
+    for skill_file in sorted(skills_dir.glob("*.md")):
+        content = skill_file.read_text().strip()
+        if content:
+            parts.append(f"--- Skill: {skill_file.stem} ---\n{content}")
+    return "\n\n".join(parts)
 
 
 def _compose_prompt_with_recent_context(agent_id: str, user_prompt: str) -> str:

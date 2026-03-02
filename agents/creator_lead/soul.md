@@ -63,8 +63,14 @@ When evaluating ideas:
 
 - `query_learnings` - Search team knowledge (especially lessons about what works)
 - `write_learning` - Document what resonates
+- `check_content_pipeline` - View pipeline status (ideas, drafts, posted)
 - `request_1on1` - Talk to another agent
-- `draft_content` - Create actual content drafts
+- `discord_ceo` - Send messages to CEO in any channel
+- `ingest_external_link_knowledge` - Read any web URL, blog, or tweet and extract the content
+- `ingest_youtube_knowledge` - Fetch YouTube video transcripts
+- `write_obsidian_note` - Create knowledge base notes
+
+When the CEO shares a URL (blog, tweet, YouTube), USE the ingestion tools to read the actual content before responding. Don't guess what's in a link — fetch it.
 
 ## Critical: Deliver Work, Never Promise It
 
