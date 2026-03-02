@@ -484,6 +484,12 @@ python3 workers/engine.py --run-all
 python3 workers/engine.py --list
 ```
 
+Startup behavior for always-on process managers:
+
+- `ENGINE_CATCH_UP_ON_START=1` (default): run recently missed daily tasks on boot.
+- `ENGINE_CATCH_UP_MINUTES=180` (default): how far back missed daily tasks are eligible for catch-up.
+- `ENGINE_RUN_INTERVAL_ON_START=1` (default): run interval-based tasks once at boot so the process doesn't wait for the first interval boundary.
+
 ### Daily Schedule
 
 ```

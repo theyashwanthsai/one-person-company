@@ -16,12 +16,13 @@ import random
 import asyncio
 import schedule
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 from dotenv import load_dotenv
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-load_dotenv()
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 from lib.tool_runner import run_agent_with_tools, run_agent_step
 from lib.sessions import create_session, append_turn, complete_session
@@ -44,6 +45,32 @@ LAST_SEEN_LOCK = discord_inbox.LAST_SEEN_LOCK
 
 def get_schedule() -> List[dict]:
     return load_schedule_from_markdown(SCHEDULE_FILE)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _parse_today_time(time_str: str):
+    try:
+        clock = datetime.strptime(time_str, "%H:%M").time()
+    except (TypeError, ValueError):
+        return None
+    now = datetime.now()
+    return datetime.combine(now.date(), clock)
 
 
 def get_discord_poll_seconds() -> int:
@@ -340,14 +367,20 @@ async def run_task(entry: dict):
 def start():
     """Start the engine. Schedules all tasks and runs the loop."""
     schedule_entries = get_schedule()
+    catch_up_enabled = _env_bool("ENGINE_CATCH_UP_ON_START", True)
+    catch_up_minutes = max(0, _env_int("ENGINE_CATCH_UP_MINUTES", 180))
+    run_interval_on_start = _env_bool("ENGINE_RUN_INTERVAL_ON_START", True)
+    now = datetime.now()
 
     print(f"\n🏢 One Person Company — Engine Starting")
-    print(f"   Time: {datetime.now().strftime('%I:%M %p, %B %d %Y')}")
+    print(f"   Time: {now.strftime('%I:%M %p, %B %d %Y')}")
     print(f"   Tasks: {len(schedule_entries)}")
     print()
 
     start_discord_poller()
 
+    scheduled_jobs = []
+    startup_entries = []
     for entry in schedule_entries:
         t = entry.get("time")
         interval_minutes = entry.get("interval_minutes")
@@ -363,15 +396,51 @@ def start():
                 label = f"{agents} → {stype}"
 
         if interval_minutes:
-            schedule.every(interval_minutes).minutes.do(
+            job = schedule.every(interval_minutes).minutes.do(
                 lambda e=entry: asyncio.run(run_task(e))
             )
+            scheduled_jobs.append((label, job))
             print(f"  every {interval_minutes}m  {label}")
+            if run_interval_on_start:
+                startup_entries.append(
+                    (
+                        now,
+                        f"{label} (interval bootstrap)",
+                        entry,
+                    )
+                )
         else:
-            schedule.every().day.at(t).do(
+            job = schedule.every().day.at(t).do(
                 lambda e=entry: asyncio.run(run_task(e))
             )
+            scheduled_jobs.append((label, job))
             print(f"  {t}  {label}")
+            if catch_up_enabled:
+                scheduled_today = _parse_today_time(t)
+                if scheduled_today and scheduled_today <= now:
+                    lateness = now - scheduled_today
+                    if lateness <= timedelta(minutes=catch_up_minutes):
+                        startup_entries.append(
+                            (
+                                scheduled_today,
+                                f"{label} (catch-up for {t})",
+                                entry,
+                            )
+                        )
+
+    print("\n  Next runs:")
+    for label, job in scheduled_jobs:
+        print(f"   - {label}: {job.next_run}")
+
+    if startup_entries:
+        startup_entries.sort(key=lambda x: x[0])
+        print("\n  Startup runs:")
+        for _, startup_label, _ in startup_entries:
+            print(f"   - {startup_label}")
+        print()
+        for _, startup_label, startup_entry in startup_entries:
+            print(f"▶ Running startup task: {startup_label}")
+            asyncio.run(run_task(startup_entry))
 
     print(f"\n⏳ Engine running. Ctrl+C to stop.\n")
 
