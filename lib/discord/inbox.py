@@ -90,6 +90,12 @@ def build_inbox_request_task(agent_id: str, message: dict) -> str:
         "Reply like a human in a normal chat: natural, direct, concise.\n"
         "Do not write status-report language (e.g., 'Acknowledged...').\n"
         "Do not include subject lines, urgency labels, signatures, or metadata.\n\n"
+        "CRITICAL: Produce the actual work in your response. "
+        "If asked for content, write the content. If asked for a summary, write the summary. "
+        "If asked for analysis, write the analysis. "
+        "NEVER say 'I will do it' or 'I'm working on it' — there is no later. "
+        "Your discord_ceo message IS the deliverable. "
+        "Use tools first to gather data if needed, then deliver the finished output.\n\n"
         f"Agent: {agent_id}\n"
         f"From: {sender}\n"
         f"Required reply channel: {reply_channel}\n"
@@ -469,7 +475,8 @@ def get_inbox_context(agent_id: str) -> str:
         lines.append(f"   Subject: {subject}")
         lines.append(f"   Message: {short_body}")
     lines.append(
-        "Acknowledge and act on these as needed. "
+        "Act on these NOW and deliver the actual output. "
+        "If asked for content/summaries/analysis, produce it — don't promise to do it later. "
         "If another agent should handle this, request a 1-on-1 and notify the CEO. "
         "When you message the CEO, keep it conversational and plain text."
     )
