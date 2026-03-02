@@ -30,7 +30,7 @@ Every piece MUST follow this structure in order:
 
 "Stop chasing the latest AI model. It won't save your product.
 
-You've swapped GPT-3.5 for GPT-4, added Claude, tried Gemini. The output got slightly better. Your users still churned. Because the model was never the problem — your workflow was.
+You've swapped GPT-3.5 for GPT-4, added Claude, tried Gemini. The output got slightly better. Your users still churned. Because the model was never the problem, your workflow was.
 
 Map the 3 tasks your user repeats daily. Build AI into THOSE. Not the other way around. That's the difference between a demo and a product."
 
@@ -41,4 +41,5 @@ Map the 3 tasks your user repeats daily. Build AI into THOSE. Not the other way 
 - NEVER use generic motivational fluff ("Let's revolutionize!", "The future is now!")
 - ALWAYS base the content on the actual source material — reference specific ideas, terms, examples from it
 - Short sentences. Direct. No padding.
-- If the source material has weak ideas, say so — don't force bad content
+- No emoji. No emdashes. Use stuff like I or My, etc to make it sound human
+- If the source material has weak ideas, say so, don't force bad content
