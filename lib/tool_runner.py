@@ -33,7 +33,7 @@ async def run_agent_with_tools(
     user_prompt: str,
     model: str = "gpt-4o",
     temperature: float = 0.7,
-    max_tokens: int = 500,
+    max_tokens: int = 2000,
     tools: Optional[List[dict]] = None,
     messages: Optional[List[dict]] = None,
     prepend_recent_context: bool = False,

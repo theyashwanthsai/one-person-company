@@ -46,11 +46,31 @@ def _extract_text_chunks(html: str) -> List[str]:
 
     chunks = []
     main = soup.find("main") or soup.find("article") or soup.body or soup
-    for node in main.find_all(["h1", "h2", "h3", "p", "li", "blockquote"]):
+    for node in main.find_all(["h1", "h2", "h3", "h4", "p", "li", "blockquote", "pre", "td", "th", "figcaption", "summary", "details"]):
         text = node.get_text(" ", strip=True)
-        if text:
+        if text and len(text) > 5:
             chunks.append(text)
+
+    if not chunks and main:
+        fallback_text = main.get_text(separator="\n", strip=True)
+        if fallback_text and len(fallback_text) > 20:
+            chunks = [line.strip() for line in fallback_text.splitlines() if line.strip()]
     return chunks
+
+
+def _fetch_via_jina_reader(url: str) -> str:
+    """Fallback: use Jina Reader API for JS-rendered sites."""
+    try:
+        resp = requests.get(
+            f"https://r.jina.ai/{url}",
+            timeout=30,
+            headers={"Accept": "text/plain"},
+        )
+        if resp.status_code < 400 and resp.text and len(resp.text.strip()) > 50:
+            return resp.text.strip()
+    except Exception:
+        pass
+    return ""
 
 
 def _extract_tweet_id(url: str) -> str:
@@ -144,10 +164,12 @@ def execute(agent_id: str, **kwargs):
             note_type="source_tweet",
             filename_hint=title,
         )
+        content_preview = body[:3000]
         return (
-            f"Stored external link knowledge note.\n"
+            f"Stored and extracted content from tweet.\n"
             f"- title: {title}\n"
-            f"- path: {result['path']}"
+            f"- path: {result['path']}\n\n"
+            f"--- Extracted Content ---\n{content_preview}"
         )
 
     try:
@@ -171,8 +193,14 @@ def execute(agent_id: str, **kwargs):
     html = response.text or ""
     chunks = _extract_text_chunks(html)
     page_text = "\n\n".join(chunks).strip()
+
+    if not page_text or len(page_text) < 50:
+        jina_text = _fetch_via_jina_reader(url)
+        if jina_text:
+            page_text = jina_text
+
     if not page_text:
-        return "Error: Could not extract readable text from the page."
+        return "Error: Could not extract readable text from the page (tried direct HTML and Jina Reader)."
 
     page_text = page_text[:200000]
     soup = BeautifulSoup(html, "html.parser")
@@ -195,8 +223,10 @@ def execute(agent_id: str, **kwargs):
         note_type="source_web",
         filename_hint=title,
     )
+    content_preview = page_text[:3000]
     return (
-        f"Stored external link knowledge note.\n"
+        f"Stored and extracted content from URL.\n"
         f"- title: {title}\n"
-        f"- path: {result['path']}"
+        f"- path: {result['path']}\n\n"
+        f"--- Extracted Content ---\n{content_preview}"
     )

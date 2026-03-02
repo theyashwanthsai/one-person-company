@@ -1,43 +1,44 @@
-# Short-Form Content Framework
+# Short-Form Content Skill
 
-Every short-form content piece (tweet, thread, carousel, mini-essay) MUST follow this structure:
+When asked to create short-form content, produce exactly what's requested — typically 3 standalone pieces.
 
-## 1. Hook
-The first line stops the scroll. It must create curiosity, tension, or surprise.
+## Format
 
-Good hooks:
+Each piece is a single block of text (a tweet, a short post). NOT a carousel. NOT a LinkedIn post. NOT an essay. NOT a thread. Just a self-contained short-form piece.
+
+## Structure: Hook → Problem → Answer
+
+Every piece MUST follow this structure in order:
+
+**Hook** (first 1-2 sentences) — Stop the scroll. Create curiosity, tension, or surprise.
 - Contrarian take: "Most AI wrappers will fail. Here's the one pattern that won't."
-- Curiosity gap: "I automated 70% of my business in 30 days. Here's exactly how."
+- Curiosity gap: "I automated 70% of my business in 30 days. This is how."  
 - Bold claim: "System design matters more than your model choice."
 - Pattern interrupt: "Stop building AI apps. Start building AI systems."
 
-Bad hooks:
-- Generic: "Let's talk about AI" 
-- Boring: "Here are some thoughts on system design"
-- Clickbait with no payoff: "You won't BELIEVE this"
-
-## 2. Problem
-Right after the hook, name the specific problem your audience feels. Make them nod.
-
+**Problem** (next 1-2 sentences) — Name the specific pain your audience feels.
 - Be specific, not abstract
-- Use "you" language — make it personal
-- Name the pain they already know but haven't articulated
+- Use "you" language
+- Name what they already feel but haven't articulated
 
-Example: "You've built 5 AI wrappers. None of them stuck. The issue isn't your code — it's that you're solving for features instead of workflows."
+**Answer** (remaining sentences) — Deliver the insight or framework.
+- Give actionable value
+- Use concrete examples, tools, numbers
+- End with a takeaway they can use today
 
-## 3. Answer
-Deliver the insight, framework, or solution. This is the payload.
+## Example
 
-- Give actionable value, not vague advice
-- Use concrete examples, numbers, or steps
-- End with a takeaway they can use TODAY
+"Stop chasing the latest AI model. It won't save your product.
 
-Example: "The fix: map the workflow first, then build the AI into it. Not the other way around. Start with the 3 tasks your user repeats daily."
+You've swapped GPT-3.5 for GPT-4, added Claude, tried Gemini. The output got slightly better. Your users still churned. Because the model was never the problem — your workflow was.
+
+Map the 3 tasks your user repeats daily. Build AI into THOSE. Not the other way around. That's the difference between a demo and a product."
 
 ## Rules
 
-- Every piece must have all 3 parts (Hook → Problem → Answer)
-- Never write generic motivational content
-- Always be specific — name tools, numbers, examples
-- Short sentences. Punch. Don't ramble.
-- If you can't name a specific problem, the content isn't ready yet
+- NEVER produce carousels, slide decks, LinkedIn posts, or essays unless explicitly asked
+- NEVER use slide labels like "Slide 1:", "Tweet 1/5:", etc. — each piece stands alone
+- NEVER use generic motivational fluff ("Let's revolutionize!", "The future is now!")
+- ALWAYS base the content on the actual source material — reference specific ideas, terms, examples from it
+- Short sentences. Direct. No padding.
+- If the source material has weak ideas, say so — don't force bad content
