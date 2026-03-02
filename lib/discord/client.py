@@ -23,6 +23,8 @@ class DiscordClient:
         self.default_channel_id = os.getenv("DISCORD_CHANNEL_ID")
         self.general_channel_id = os.getenv("DISCORD_GENERAL_CHANNEL_ID", self.default_channel_id)
         self.standup_channel_id = os.getenv("DISCORD_STANDUP_CHANNEL_ID", self.default_channel_id)
+        self.content_channel_id = os.getenv("DISCORD_CONTENT_CHANNEL_ID")
+        self.mails_channel_id = os.getenv("DISCORD_MAILS_CHANNEL_ID")
         self.ceo_user_id = os.getenv("DISCORD_CEO_USER_ID")
         self.http_timeout_seconds = int(os.getenv("DISCORD_HTTP_TIMEOUT_SECONDS", "15"))
 
@@ -247,8 +249,11 @@ class DiscordClient:
             return self.standup_channel_id or by_agent
         if channel == "general":
             return self.general_channel_id or by_agent
+        if channel == "content":
+            return self.content_channel_id or by_agent
+        if channel == "mails":
+            return self.mails_channel_id or by_agent
 
-        # "auto" defaults to general. Standup channel should only be used when explicitly requested.
         return self.general_channel_id or by_agent
 
     def _request(

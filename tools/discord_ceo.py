@@ -26,8 +26,8 @@ SCHEMA = {
                 },
                 "channel": {
                     "type": "string",
-                    "enum": ["auto", "general", "standup"],
-                    "description": "Where to post in Discord. Use standup for standup updates. Default: auto"
+                    "enum": ["auto", "general", "standup", "content", "mails"],
+                    "description": "Where to post in Discord. standup for standups, content for content updates, mails for email summaries. Default: auto"
                 }
             },
             "required": ["message"]

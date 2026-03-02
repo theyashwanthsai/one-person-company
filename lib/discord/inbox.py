@@ -203,19 +203,30 @@ def _is_standup_request(message_body: str) -> bool:
     return bool(re.search(r"\bstandup\b", text))
 
 
+CHANNEL_DEFAULT_AGENTS = {
+    "content": "creator_lead",
+    "mails": "watari",
+    "standup": None,
+    "general": None,
+}
+
+
 def _requested_reply_channel(message_body: str, source_channel: str) -> str:
-    if source_channel == "standup" or _is_standup_request(message_body):
+    if source_channel in CHANNEL_DEFAULT_AGENTS:
+        return source_channel
+    if _is_standup_request(message_body):
         return "standup"
     return "general"
 
 
 def resolve_message_targets(message_body: str, agents: List[dict], source_channel: str = "general") -> List[str]:
     """
-    Route a CEO message from #general to target agent(s).
+    Route a CEO message to target agent(s).
     Rules:
     - Contains 'all'/'everyone'/'team' => all agents
-    - Mentions agent id or first name => matching agents
-    - No explicit target => one default agent
+    - Discord @mention or agent name => matching agents
+    - Channel-specific default (e.g. #content → Kavi, #mails → Watari)
+    - No explicit target => env default agent
     """
     text = (message_body or "").lower()
     agent_ids = [a.get("id") for a in agents if a.get("id")]
@@ -238,6 +249,10 @@ def resolve_message_targets(message_body: str, agents: List[dict], source_channe
 
     if source_channel == "standup":
         return agent_ids
+
+    channel_default = CHANNEL_DEFAULT_AGENTS.get(source_channel)
+    if channel_default and channel_default in agent_ids:
+        return [channel_default]
 
     configured_default = os.getenv("DISCORD_DEFAULT_AGENT_ID", "watari")
     if configured_default in agent_ids:
@@ -329,11 +344,21 @@ def poll_discord_for_all_agents(
 
     general_channel_id = (client.general_channel_id or "").strip()
     standup_channel_id = (client.standup_channel_id or "").strip()
+    content_channel_id = (client.content_channel_id or "").strip()
+    mails_channel_id = (client.mails_channel_id or "").strip()
     channels: List[tuple[str, str]] = []
     if general_channel_id:
         channels.append(("general", general_channel_id))
-    if standup_channel_id and standup_channel_id != general_channel_id:
+    seen_ids = {general_channel_id}
+    if standup_channel_id and standup_channel_id not in seen_ids:
         channels.append(("standup", standup_channel_id))
+        seen_ids.add(standup_channel_id)
+    if content_channel_id and content_channel_id not in seen_ids:
+        channels.append(("content", content_channel_id))
+        seen_ids.add(content_channel_id)
+    if mails_channel_id and mails_channel_id not in seen_ids:
+        channels.append(("mails", mails_channel_id))
+        seen_ids.add(mails_channel_id)
     if not channels:
         return
 
@@ -365,11 +390,22 @@ def prime_discord_cursor_if_needed(client):
 
     general_channel_id = (client.general_channel_id or "").strip()
     standup_channel_id = (client.standup_channel_id or "").strip()
+    content_channel_id = (client.content_channel_id or "").strip()
+    mails_channel_id = (client.mails_channel_id or "").strip()
     channels: List[tuple[str, str]] = []
+    seen_ids: set = set()
     if general_channel_id:
         channels.append(("general", general_channel_id))
-    if standup_channel_id and standup_channel_id != general_channel_id:
+        seen_ids.add(general_channel_id)
+    if standup_channel_id and standup_channel_id not in seen_ids:
         channels.append(("standup", standup_channel_id))
+        seen_ids.add(standup_channel_id)
+    if content_channel_id and content_channel_id not in seen_ids:
+        channels.append(("content", content_channel_id))
+        seen_ids.add(content_channel_id)
+    if mails_channel_id and mails_channel_id not in seen_ids:
+        channels.append(("mails", mails_channel_id))
+        seen_ids.add(mails_channel_id)
 
     for channel_key, channel_id in channels:
         with LAST_SEEN_LOCK:

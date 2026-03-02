@@ -26,12 +26,24 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "task": "Review recent external signals in the database. Look for engagement patterns and benchmark data. Calculate what content formats and topics are performing well. Document findings as learnings."
     },
 
-    # ---- CEO Standup ----
+    # ---- CEO Standup (each agent posts individually) ----
     {
-        "time": "09:00", "type": "meeting",
-        "agents": ["strategist_lead", "creator_lead", "analyst_lead"],
+        "time": "09:00", "type": "solo",
+        "agent": "strategist_lead",
         "session_type": "ceo_standup",
-        "task": "Daily standup with the CEO. Each of you: share what changed since yesterday, what you're confident about, and what you're uncertain about. Be specific and reference your recent learnings. After sharing, send the CEO a summary on Discord using discord_ceo with channel='standup'."
+        "task": "Daily standup. Use your tools to gather real data before reporting. 1) query_learnings to find what you learned recently. 2) scan_external_source to see what signals you stored. 3) recall_memories for recent work. Then post YOUR standup to Discord via discord_ceo with channel='standup'. Be specific: name actual topics you scanned, patterns you found, signals you stored. No generic statements like 'I scanned sources' — say WHAT you found."
+    },
+    {
+        "time": "09:02", "type": "solo",
+        "agent": "creator_lead",
+        "session_type": "ceo_standup",
+        "task": "Daily standup. Use your tools to gather real data before reporting. 1) check_content_pipeline to see current drafts and ideas. 2) query_learnings for recent insights. 3) recall_memories for recent work. Then post YOUR standup to Discord via discord_ceo with channel='standup'. Be specific: name actual content pieces you drafted, ideas in the pipeline, what stage they're at. No generic statements like 'I'm working on content' — say WHICH pieces, WHAT topics, WHERE they are in the pipeline."
+    },
+    {
+        "time": "09:04", "type": "solo",
+        "agent": "analyst_lead",
+        "session_type": "ceo_standup",
+        "task": "Daily standup. Use your tools to gather real data before reporting. 1) query_learnings for recent analysis findings. 2) check_content_pipeline for items you reviewed. 3) scan_external_source for signals you analyzed. Then post YOUR standup to Discord via discord_ceo with channel='standup'. Be specific: name actual metrics, benchmarks, content pieces you evaluated, patterns you found in the data. No generic statements like 'I analyzed performance' — say WHAT performed well, by HOW much, and WHAT you recommend."
     },
 
     # ---- Mid-Morning Work ----

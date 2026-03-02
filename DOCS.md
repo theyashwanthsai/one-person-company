@@ -42,24 +42,25 @@ pip install -r requirements.txt
 
 **4. Register & Cold Start**
 ```bash
-python scripts/register_agents.py     # Register Thea, Kavi, Dara
-python scripts/cold_start.py          # Mini essays
-python scripts/ingest_website.py      # Website articles
+python scripts/register_agents.py          # Register Thea, Kavi, Dara, Watari
+python scripts/cold_start.py               # Mini essays
+python scripts/ingest_github_articles.py   # GitHub articles
 ```
 
 ---
 
 ## Your Team
 
-| Name | Role | Personality |
-|------|------|-------------|
-| **Thea** | Strategy Lead | Sees patterns, long-term thinker |
-| **Kavi** | Content Creator | Executes fast, creative |
-| **Dara** | Data Analyst | Data-driven, precise |
+| Name | ID | Role | Personality |
+|------|----|------|-------------|
+| **Thea** | `strategist_lead` | Strategy Lead | Sees patterns, long-term thinker |
+| **Kavi** | `creator_lead` | Content Creator | Executes fast, creative |
+| **Dara** | `analyst_lead` | Data Analyst | Data-driven, precise |
+| **Watari** | `watari` | Personal Assistant | Calm operator, turns chaos into structure |
 
 **Agent Structure:** Each agent is a skill folder (`agents/<agent_id>/`) with:
-- `soul.md` - Personality + instructions (required)
-- `skills/` - Session/task-specific skills
+- `soul.md` - Personality, responsibilities, decision rules, tools (required)
+- `skills/` - Session/task-specific skills (standup for all; Watari also has brainstorm, email, youtube)
 
 ---
 
@@ -76,8 +77,8 @@ python scripts/cold_start.py
 
 **Result:** 24-30 learnings across all agents from curated content.
 
-### Part 2: Website Articles (`ingest_github_articles.py`)
-Scrapes **63 articles** (42,000+ words) from your GitHub repo.
+### Part 2: GitHub Articles (`ingest_github_articles.py`)
+Fetches **63 articles** (42,000+ words) from your GitHub repo via API.
 
 ```bash
 python scripts/ingest_github_articles.py
@@ -213,44 +214,149 @@ append_turn(session_id, speaker='strategist_lead', text='Scanned 50 tweets...')
 # Complete
 complete_session(session_id, artifacts={'decisions': ['Focus on AI agents']})
 ```
-**Features:** Status tracking, conversation history, artifact storage, learning links.
+**Features:** Status tracking, conversation history, artifact storage, learning links, retry with backoff.
+
+### `lib/email_client.py` - Email (IMAP/SMTP)
+```python
+from lib.email_client import EmailClient
+
+client = EmailClient()
+
+# Fetch new messages (tracks UIDs in email/state.json)
+messages = client.fetch_new_messages(limit=10, unread_only=True)
+
+# Send email
+client.send_email(to="someone@example.com", subject="Update", body="Content here")
+```
+**Features:** UID-based state tracking, HTML-to-text conversion, attachment extraction, SSL/TLS.
+
+### `lib/knowledge_base.py` - Obsidian Markdown Vault
+```python
+from lib.knowledge_base import write_markdown_note, wiki_link, ensure_kb_dirs
+
+# Write a note with YAML frontmatter
+write_markdown_note(
+    title="My Note",
+    body="Content here",
+    note_type="youtube_transcript",
+    source_url="https://...",
+    tags=["ai", "agents"],
+    folder="sources/youtube"
+)
+
+# Create wikilinks
+link = wiki_link("Related Topic")  # → [[Related Topic]]
+```
+**Features:** Obsidian-style notes, YAML frontmatter, slug filenames, wikilinks, tag normalization.
+
+### `lib/schedule_loader.py` - Schedule Parser
+```python
+from lib.schedule_loader import load_schedule_from_markdown
+
+# Parses Python list from markdown code block
+entries = load_schedule_from_markdown("workers/schedule.md")
+```
+**Features:** Extracts Python list from markdown fenced block, validates entry structure (solo needs `agent`, meeting needs `agents`).
 
 ---
 
 ## Build Status
 
 ### ✅ Complete
-- **Database** - 8 tables (agents, learnings, memories, sessions, content_pipeline, external_signals, ceo_feedback, company_trajectory)
-- **Agent System** - 3 agents (Thea, Kavi, Dara) with skill folders
-- **Cold Start** - Writing analysis + learning generation
-- **Core Libraries** - LLM, learnings, memories, sessions, agents
+- **Database** — 8 tables (agents, learnings, memories, sessions, content_pipeline, external_signals, ceo_feedback, company_trajectory) + 14 migration files
+- **Agent System** — 4 agents (Thea, Kavi, Dara, Watari) with skill folders
+- **Cold Start** — Writing analysis + GitHub article ingestion + learning generation
+- **Core Libraries** — LLM, learnings, memories, sessions, agents, email client, knowledge base, schedule loader, Supabase client
 
 ### ✅ Sessions System
-- **CEO Standup** - Discord-based async standup with agents
-- **Brainstorm** - Creative ideation (Strategist + Creator)
-- **Market Review** - Content validation with benchmarks
-- **Watercooler** - Casual chats for weak signals
-- **1-on-1** - Agent-initiated focused conversations
-- **Scheduler** - Automated daily session orchestration
-- **Content Pipeline** - Idea → Approved → Draft → Post lifecycle
+- **CEO Standup** — Each agent posts individual standup to #daily-standup with real data
+- **Brainstorm** — Creative ideation (Strategist + Creator)
+- **Market Review** — Content validation with benchmarks
+- **Watercooler** — Casual chats for weak signals
+- **1-on-1** — Agent-initiated focused conversations
+- **Scheduler** — Automated daily session orchestration
+- **Content Pipeline** — Idea → Approved → Draft → Post lifecycle
 
 ### ✅ Agent Tool System
 - **Tool Registry** — Auto-discovers tools from `tools/`
-- **Tool Runner** — LLM ↔ tool execution loop with retries
-- **12 Shared Tools** — learnings, memories, sessions, content pipeline, external integrations
+- **Tool Runner** — LLM ↔ tool execution loop with retries and auto-logging
+- **18 Shared Tools** — knowledge, memory, communication, external surf, content, collaboration
 
-- **surf_reddit.py** — Surf Reddit posts via public JSON endpoints
-- **surf_hn.py** — Fetch HN stories via Algolia with time-window filters
-- **store_external_signal.py** — Persist surf_* payloads to Supabase
-- **publish_content.py** — Post tweets (single or threads)
-- **fetch_metrics.py** — Pull engagement metrics and analyze performance
+### ✅ Knowledge Base & Email
+- **Knowledge Base** — Obsidian-style markdown vault (`knowledgebase/`) with YouTube transcripts, web articles, notes
+- **Email System** — IMAP inbox + SMTP send via `lib/email_client.py`, state tracking in `email/state.json`
+
+### ✅ Discord Integration
+- **Discord Client** — REST API for CEO/agent communication (send, poll, per-agent tokens)
+- **Discord Inbox** — Queue-based message routing, @mention resolution, busy acknowledgments, daemon poller
 
 ### 🚧 Next Up
-- **Frontend** - Pixel art office dashboard
-- **Discord Client** - Complete CEO standup + direct request flow
-- **Deployment** - Production setup and cron jobs
+- **Frontend** — Pixel art office dashboard
+- **Deployment** — Production setup and cron jobs
 
 **Progress:** 90+ items complete in `plan.md` (out of 150+)
+
+---
+
+## Knowledge Base
+
+The `knowledgebase/` directory is an Obsidian-compatible markdown vault. Agents ingest content here as structured notes with YAML frontmatter.
+
+### Directory Structure
+```
+knowledgebase/
+├── sources/
+│   ├── youtube/    # YouTube transcript notes
+│   └── web/        # Web article notes
+├── notes/          # Agent-created Obsidian notes
+└── drafts/         # Content drafts
+```
+
+### Ingestion Tools
+
+**YouTube** (`ingest_youtube_knowledge`):
+```python
+result = await execute(url="https://youtube.com/watch?v=...", tags=["ai"])
+# → Fetches transcript, saves as markdown with timestamps
+```
+
+**Web Links** (`ingest_external_link_knowledge`):
+```python
+result = await execute(url="https://example.com/article", tags=["research"])
+# → Fetches page, extracts text, saves as markdown (handles tweets specially)
+```
+
+**Manual Notes** (`write_obsidian_note`):
+```python
+result = await execute(title="My Insight", content="...", tags=["strategy"], links=["Related Topic"])
+# → Creates note with wikilinks: [[Related Topic]]
+```
+
+### Note Format
+Each note gets YAML frontmatter: title, type, created timestamp, source_url, tags, aliases. Body is clean markdown.
+
+---
+
+## Email System
+
+Agents can check inbox and send emails via `lib/email_client.py` and the `email_ops` tool.
+
+### Setup
+Add to `.env`:
+```bash
+EMAIL_IMAP_HOST=imap.gmail.com
+EMAIL_IMAP_PORT=993
+EMAIL_SMTP_HOST=smtp.gmail.com
+EMAIL_SMTP_PORT=587
+EMAIL_ADDRESS=your@email.com
+EMAIL_PASSWORD=your-app-password
+```
+
+### How It Works
+- **Inbox**: IMAP fetch with UID tracking (`email/state.json` persists last-seen UID)
+- **Send**: SMTP with To/Cc/Bcc support
+- **Discord bridge**: Inbox summaries can auto-post to `#mails` channel
+- **Agent access**: Via the `email_ops` tool (action: `check` or `send`)
 
 ---
 
@@ -353,6 +459,20 @@ This will:
 3. Optionally test publishing (confirmation required)
 4. Optionally test metrics fetching
 
+### Twitter Search (`surf_twitter.py`)
+```python
+result = await execute(
+    keywords=["AI agents", "LLM tools"],
+    max_results=20
+)
+# Returns: count, tweets, top_tweet (by likes)
+```
+
+**Features:**
+- Twitter API v2 recent search
+- Query by raw string or keyword list (combined with OR)
+- Returns likes, retweets, replies, quotes, bookmarks, impressions per tweet
+
 ### API Setup
 
 **Twitter API:**
@@ -363,11 +483,10 @@ This will:
 5. Add to `.env`
 
 **Reddit API:**
-- No API key is required for `surf_reddit.py` in the current implementation.
-- It uses Reddit's public `/r/<subreddit>/<sort>.json` endpoints with a custom user agent.
+- No API key required. Uses public `/r/<subreddit>/<sort>.json` endpoints with a custom user agent.
 
 **Hacker News:**
-- No API key needed! Works out of the box.
+- No API key needed. Works out of the box.
 
 ---
 
@@ -382,28 +501,34 @@ Each tool is a Python file with two things:
 Tools live in one place:
 - `tools/` — shared tools available to all agents
 
-### Available Tools
+### Available Tools (18)
 
 **Knowledge & Memory:**
-- `query_learnings` — Search team knowledge base
-- `write_learning` — Document a pattern/insight/strategy
-- `store_memory` — Record an experiential memory
+- `query_learnings` — Search team knowledge base by tags, types, confidence
+- `write_learning` — Document a pattern/insight/strategy/lesson/warning
+- `store_memory` — Record an experiential memory with emotional valence
 - `recall_memories` — Search past experiences and interactions
+
+**Knowledge Base (Obsidian):**
+- `ingest_youtube_knowledge` — Fetch YouTube transcripts and store as markdown notes
+- `ingest_external_link_knowledge` — Fetch web URLs (or tweets) and store as markdown notes
+- `write_obsidian_note` — Create Obsidian-style notes with wikilinks and tags
 
 **Communication:**
 - `request_1on1` — Request conversation with another agent
 - `discord_ceo` — Send Discord message to CEO (escalations, questions)
-- `email_ops` — Check inbox updates or send an email
+- `email_ops` — Check inbox (IMAP) or send email (SMTP)
 
-**External Ingestion:**
+**External Surfing:**
 - `surf_reddit` — Surf Reddit posts via public JSON endpoints
 - `surf_hn` — Surf Hacker News stories via Algolia time-window search
+- `surf_twitter` — Search Twitter via API v2 recent search
 - `store_external_signal` — Persist selected signals after surf_ tools run
-- `scan_external_source` — Search stored external signals
+- `scan_external_source` — Search stored external signals in DB
 
 **Content & Publishing:**
 - `check_content_pipeline` — View content pipeline status
-- `publish_content` — Post tweets (supports threads)
+- `publish_content` — Post tweets (supports threads via OAuth 1.0a)
 - `fetch_metrics` — Get engagement metrics for published content
 
 ### Running an Agent with Tools
@@ -492,10 +617,17 @@ Startup behavior for always-on process managers:
 
 ### Daily Schedule
 
+Schedule lives in `workers/schedule.md` as a Python list inside a markdown code block. Parsed by `lib/schedule_loader.py`.
+
+The schedule includes daily timed tasks and interval-based recurring tasks:
+
 ```
+Daily timed tasks:
 08:00  Thea scans signals (solo)
 08:30  Dara analyzes signals (solo)
-09:00  CEO standup (meeting: all 3)
+09:00  Thea standup → #daily-standup (solo)
+09:02  Kavi standup → #daily-standup (solo)
+09:04  Dara standup → #daily-standup (solo)
 09:30  Thea scans signals (solo)
 10:00  Dara reviews pipeline (solo)
 10:30  Brainstorm (meeting: Thea + Kavi)
@@ -504,13 +636,16 @@ Startup behavior for always-on process managers:
 12:00  Watercooler (meeting: random 2)
 13:00  Thea scans signals (solo)
 13:30  Dara deep analysis (solo)
-14:00  Market review (meeting: all 3)
+14:00  Market review (meeting: all 3 leads)
 15:00  Brainstorm (meeting: Thea + Kavi)
 15:30  Kavi drafts content (solo)
 16:00  Thea scans signals (solo)
 16:30  Watercooler (meeting: random 2)
 17:00  Dara performance review (solo)
 17:30  Thea final scan (solo)
+
+Interval tasks:
+Every 30min  Watari checks email inbox → posts to #mails
 ```
 
 ### Adding a New Task
@@ -526,7 +661,7 @@ Add one entry to the list in `workers/schedule.md`:
 }
 ```
 
-You can also run recurring tasks by specifying an interval:
+Interval-based recurring tasks:
 
 ```python
 {
@@ -547,18 +682,31 @@ Ideas flow through: `idea → approved → drafted → posted → analyzed`
 SELECT title, status, priority FROM content_pipeline ORDER BY created_at DESC;
 ```
 
-### Discord Setup (for CEO standup + direct requests)
+### Discord Setup
 
 1. Create bot(s) at https://discord.com/developers/applications
-2. Add the bot(s) to your server with permission to read/send messages in `#general` and `#standup`
+2. Add the bot(s) to your server with permission to read/send messages in all channels
 3. Add to `.env`:
 ```bash
 DISCORD_BOT_TOKEN=your-discord-bot-token
 DISCORD_CEO_USER_ID=your-discord-user-id
 DISCORD_GENERAL_CHANNEL_ID=your-general-channel-id
 DISCORD_STANDUP_CHANNEL_ID=your-standup-channel-id
+DISCORD_CONTENT_CHANNEL_ID=your-content-channel-id
+DISCORD_MAILS_CHANNEL_ID=your-mails-channel-id
 DISCORD_POLL_SECONDS=60
 ```
+
+**Channel routing:**
+
+| Channel | Default Agent | Purpose |
+|---------|---------------|---------|
+| `#general` | Watari (configurable via `DISCORD_DEFAULT_AGENT_ID`) | General requests, catch-all |
+| `#daily-standup` | All agents | Individual standups, team-wide messages |
+| `#content` | Kavi (`creator_lead`) | Content requests, draft feedback, publishing |
+| `#mails` | Watari | Email inbox summaries (auto-posted every 30min) |
+
+You can always @mention a specific agent in any channel to override the default routing.
 
 ---
 
@@ -591,24 +739,39 @@ Later: Add FastAPI for complex operations (CEO feedback, session triggers).
 ## Complete Cold Start Workflow
 
 ```bash
-# 1. Register your team
+# 1. Register your team (4 agents: Thea, Kavi, Dara, Watari)
 python scripts/register_agents.py
 
 # 2. Teach from curated samples (7 mini essays)
 python scripts/cold_start.py
 # → 24-30 learnings
 
-# 3. Teach from full body of work (up to 50 articles)
-python scripts/ingest_website.py
-# → 15-24 additional learnings
+# 3. Teach from full body of work (63 GitHub articles)
+python scripts/ingest_github_articles.py
+# → 24 additional learnings
 
 # Total: 40-60 CEO-boosted learnings across all agents
 ```
 
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `register_agents.py` | Scans `agents/` folders, upserts rows into `agents` table |
+| `cold_start.py` | Reads `seeds/cold_start_dump.md`, generates learnings per agent |
+| `ingest_github_articles.py` | Fetches 63 articles from DigitalGarden repo, stores signals + learnings |
+| `bootstrap.py` | Runs register → cold_start → article ingestion sequentially |
+| `update_dashboard_positions.py` | Updates `pixel_position` in Supabase for frontend dashboard |
+| `run_migrations.py` | Helper that shows how to run migrations (doesn't execute SQL directly) |
+
+---
+
 ## Database Migrations
 
+14 migration files in `migrations/`. Run in Supabase SQL Editor or via psql:
+
 ```bash
-# Run in Supabase SQL Editor (in order):
+# Core tables (use all_migrations.sql for 001-008):
 migrations/001_create_agents.sql
 migrations/002_create_learnings.sql
 migrations/003_create_memories.sql
@@ -616,9 +779,8 @@ migrations/004_create_sessions.sql
 migrations/005_create_external_signals.sql
 migrations/006_create_ceo_feedback.sql
 migrations/007_create_company_trajectory.sql
-# ... or use all_migrations.sql for 001-008
 
-# Session system additions:
+# Additional:
 migrations/010_add_learning_adjustment_functions.sql
 migrations/011_create_content_pipeline.sql
 ```
