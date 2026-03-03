@@ -73,7 +73,7 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "time": "11:00", "type": "solo",
         "agent": "creator_lead",
         "session_type": "drafting",
-        "task": "Check the content pipeline for approved ideas. Pick the highest priority one and start drafting. Use your learnings about what performs well. Write your draft progress and any insights as learnings and memories."
+        "task": "Morning hooks + drafting. You MUST call generate_hooks_from_pipeline(status='idea', limit=20, send_to_discord=True) to turn current content_pipeline ideas into short-form drafts (Hook → Problem → Answer) and send all hooks to Discord #content. Do not claim there is a technical issue with the pipeline unless a tool explicitly returns an Error message. If there are no ideas, say that clearly and suggest which Thea notes should be turned into ideas next."
     },
     {
         "time": "11:30", "type": "solo",
