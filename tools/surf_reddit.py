@@ -82,7 +82,6 @@ def _normalize_post(child: dict, subreddit: str) -> dict:
         "created_at": created_at.isoformat(),
         "content": f"{title}\n\n{preview}".strip(),
         "engagement_score": data.get("score", 0) + (data.get("num_comments", 0) * 2),
-        "raw_data": data,
     }
 
 

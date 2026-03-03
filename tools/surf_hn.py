@@ -77,12 +77,6 @@ def _normalize_post(post: dict) -> dict:
         "created_at": created_at,
         "content": f"{title}\n\n{story_text[:400]}",
         "engagement_score": post.get("points", 0) + (post.get("num_comments", 0) or 0) * 2,
-        "raw_data": {
-            "objectID": post.get("objectID"),
-            "story_type": post.get("_tags", []),
-            "created_at_i": post.get("created_at_i"),
-            "story_text": story_text
-        }
     }
 
 

@@ -45,7 +45,9 @@ def execute(agent_id: str, **kwargs):
     content = (kwargs.get("content") or "").strip()
     tags: List[str] = kwargs.get("tags") or []
     links: List[str] = kwargs.get("links") or []
-    folder = (kwargs.get("folder") or "notes").strip()
+    # Default folder: strategist_lead notes go under 'thea', others under 'notes' unless explicitly set.
+    default_folder = "thea" if agent_id == "strategist_lead" else "notes"
+    folder = (kwargs.get("folder") or default_folder).strip()
 
     if not title:
         return "Error: title is required."

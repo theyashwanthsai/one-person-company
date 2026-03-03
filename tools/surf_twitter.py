@@ -1,5 +1,7 @@
 """Tool: Surf Twitter
 Fetch tweets using keyword queries via Twitter API v2 recent search.
+
+Currently DISABLED for this project – use Reddit/HN instead.
 """
 
 import os
@@ -13,7 +15,7 @@ SCHEMA = {
     "type": "function",
     "function": {
         "name": "surf_twitter",
-        "description": "Search Twitter posts by keywords and return structured tweets for agents to review before saving.",
+        "description": "DISABLED. Do not use. Use Reddit/HN tools instead.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -78,44 +80,8 @@ async def execute(
     keywords: Optional[List[str]] = None,
     max_results: int = 100,
 ) -> dict:
-    del agent_id
-
-    if not BEARER_TOKEN:
-        return {"success": False, "error": "TWITTER_BEARER_TOKEN is missing."}
-
-    built_query = _build_query(query, keywords)
-    if not built_query:
-        return {"success": False, "error": "Provide either query or keywords."}
-
-    url = "https://api.twitter.com/2/tweets/search/recent"
-    params = {
-        "query": built_query,
-        "max_results": max(10, min(max_results, 100)),
-        "tweet.fields": "created_at,public_metrics,author_id,lang",
-        "expansions": "author_id",
-        "user.fields": "username,name",
-    }
-    headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
-
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(url, params=params, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-    except httpx.HTTPStatusError as exc:
-        return {"success": False, "error": f"Twitter API error: {exc.response.status_code}"}
-    except Exception as exc:
-        return {"success": False, "error": f"Failed to surf Twitter: {exc}"}
-
-    tweets = data.get("data", [])
-    users = {u["id"]: u for u in data.get("includes", {}).get("users", [])}
-    normalized = [_normalize_tweet(tweet, users) for tweet in tweets]
-    top_tweet = max(normalized, key=lambda item: item["metrics"]["likes"]) if normalized else None
-
+    del agent_id, query, keywords, max_results
     return {
-        "success": True,
-        "query": built_query,
-        "tweets": normalized,
-        "top_tweet": top_tweet,
-        "count": len(normalized),
+        "success": False,
+        "error": "surf_twitter is disabled for now. Use surf_reddit and surf_hn instead.",
     }

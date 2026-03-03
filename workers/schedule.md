@@ -17,13 +17,13 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "time": "08:00", "type": "solo",
         "agent": "strategist_lead",
         "session_type": "scan",
-        "task": "Scan external sources (Twitter, Reddit, HN) for trending topics in AI, coding, developer tools, and personal branding. Look for emerging patterns, viral threads, and new narratives. Document any new patterns as learnings."
+        "task": "Run a fresh scan of Reddit and Hacker News. First, use surf_reddit on ['AI_Agents', 'LocalLLaMA', 'artificial', 'ArtificialInteligence'] (sort='new', last 1h, ~10 posts per subreddit). Read those, then write a strategic summary in your own words into the knowledge base using write_obsidian_note(folder='thea'). Only after that, use surf_hn for the last 1h of HN stories (~30 posts) and, if necessary, append an HN section to the same note."
     },
     {
         "time": "08:30", "type": "solo",
         "agent": "analyst_lead",
         "session_type": "analysis",
-        "task": "Review recent external signals in the database. Look for engagement patterns and benchmark data. Calculate what content formats and topics are performing well. Document findings as learnings."
+        "task": "Start analysis from the knowledge base, not the external_signals DB. Read all recent notes in knowledgebase/thea from the last 6 hours and create 1 content idea per post section. Use create_ideas_from_thea_notes(folder='thea', since_hours=6). Ensure the ideas are concrete and actionable (Hook/Problem/Answer), then verify they landed in content_pipeline with check_content_pipeline(status='idea')."
     },
 
     # ---- CEO Standup (each agent posts individually) ----
@@ -51,13 +51,13 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "time": "09:30", "type": "solo",
         "agent": "strategist_lead",
         "session_type": "scan",
-        "task": "Do another scan of external sources. Focus on anything you might have missed earlier. Look for contrarian takes and underexplored angles. Write learnings for anything interesting."
+        "task": "Second scan pass. Use surf_reddit and surf_hn again with the same subreddits but only a 1h window. Focus on contrarian takes and underexplored angles. Capture your synthesis in a new note under folder='thea' via write_obsidian_note, summarizing only what is genuinely interesting."
     },
     {
         "time": "10:00", "type": "solo",
         "agent": "analyst_lead",
         "session_type": "analysis",
-        "task": "Check the content pipeline. Review any ideas waiting for validation. Look at external signals related to those ideas. Assess market saturation and engagement potential. Write your analysis as learnings."
+        "task": "Check the content pipeline. Review any new ideas created from Thea's notes. Pick the top 1-2 and add market-review style notes: what would you need to validate, what benchmark to compare against, and what would make this a 'good' post. Write findings as learnings."
     },
 
     # ---- Brainstorm ----
@@ -79,7 +79,7 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "time": "11:30", "type": "solo",
         "agent": "strategist_lead",
         "session_type": "scan",
-        "task": "Quick scan of external sources. Look for anything time-sensitive or rapidly trending. If something urgent comes up, message the CEO on Discord."
+        "task": "Quick scan of Reddit and HN for anything time-sensitive or rapidly trending in the last 1h using surf_reddit and surf_hn. If you find something urgent, both log it into a thea note via write_obsidian_note and message the CEO on Discord with the concrete links and why they matter."
     },
 
     # ---- Lunch: Watercooler ----
@@ -95,13 +95,13 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "time": "13:00", "type": "solo",
         "agent": "strategist_lead",
         "session_type": "scan",
-        "task": "Afternoon signal scan. Focus on what's trending right now. Compare with what you saw this morning — any shifts?"
+        "task": "Afternoon signal scan. Use surf_reddit + surf_hn again with a 1h window and compare what you see now with the morning scans. In a new thea note via write_obsidian_note, spell out shifts you notice (topics cooling off, new ones emerging) with examples."
     },
     {
         "time": "13:30", "type": "solo",
         "agent": "analyst_lead",
         "session_type": "analysis",
-        "task": "Deep analysis session. Look at the bigger picture — what patterns emerge across all recent signals? Any market shifts? Write a synthesis as learnings."
+        "task": "Deep analysis session. Use Thea's knowledgebase/thea notes + the content_pipeline ideas created from them. Synthesize 2-4 bigger patterns and propose which ideas to prioritize this week. Write a synthesis as learnings."
     },
 
     # ---- Market Review ----
@@ -131,7 +131,7 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "time": "16:00", "type": "solo",
         "agent": "strategist_lead",
         "session_type": "scan",
-        "task": "Late afternoon scan. Catch anything that emerged during the day. Focus on evening/international trends."
+        "task": "Late afternoon scan. Use surf_reddit + surf_hn (1h window) to catch anything that emerged recently, especially from international time zones. Summarize these in a thea note via write_obsidian_note, highlighting anything worth turning into content later."
     },
 
     # ---- Evening Watercooler ----
@@ -153,7 +153,7 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "time": "17:30", "type": "solo",
         "agent": "strategist_lead",
         "session_type": "scan",
-        "task": "Final scan of the day. Quick sweep for anything you missed. Write a brief end-of-day learning summarizing the most important pattern or theme from today."
+        "task": "Final scan of the day. Quick 1h sweep on Reddit and HN using surf_reddit + surf_hn. Then write an end-of-day thea note via write_obsidian_note summarizing the single most important pattern or theme from today, with links/examples."
     },
 ]
 ```
