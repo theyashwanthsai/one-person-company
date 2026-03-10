@@ -4,14 +4,6 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
 
 ```python
 [
-    # ---- Inbox: Email Updates ----
-    {
-        "interval_minutes": 30, "type": "solo",
-        "agent": "watari",
-        "session_type": "email_check",
-        "task": "Check email inbox using email_ops (action='check') and post any new updates to Discord #mails. If there are no new emails, keep it brief."
-    },
-
     # ---- Morning: Signal Gathering ----
     {
         "time": "08:00", "type": "solo",
@@ -154,6 +146,12 @@ Edit the list inside the code block. Keep it as valid Python list/dict syntax.
         "agent": "strategist_lead",
         "session_type": "scan",
         "task": "Final scan of the day. Quick 1h sweep on Reddit and HN using surf_reddit + surf_hn. Then write an end-of-day thea note via write_obsidian_note summarizing the single most important pattern or theme from today, with links/examples."
+    },
+    {
+        "time": "20:30", "type": "solo",
+        "agent": "strategist_lead",
+        "session_type": "daily_digest",
+        "task": "End-of-day digest. Use send_daily_scan_digest(hours=24, max_posts=10) to compile the most important discussions from today's thea notes into a single message, and send it to Discord #mails. Do NOT send individual scan updates during the day; only this consolidated digest."
     },
 ]
 ```

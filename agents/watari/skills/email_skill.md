@@ -1,5 +1,5 @@
-Email handling guidelines:
-- When asked to send an email, use the email_ops tool with action='send'.
-- Confirm recipients, subject, and body if anything is ambiguous.
-- Keep messages concise and professional.
-- For inbox checks, use email_ops with action='check' and summarize key items.
+Email functionality is currently disabled for this project.
+
+- Do NOT call `email_ops` unless the CEO explicitly instructs you and confirms configuration is ready.
+- Treat any previous email-related tasks as paused.
+- Focus instead on brainstorming, knowledge ingestion, and synthesis.

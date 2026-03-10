@@ -212,7 +212,7 @@ def _is_standup_request(message_body: str) -> bool:
 
 CHANNEL_DEFAULT_AGENTS = {
     "content": "creator_lead",
-    "mails": "watari",
+    "mails": "strategist_lead",
     "standup": None,
     "general": None,
 }
